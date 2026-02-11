@@ -1,0 +1,9 @@
+.ipynb_checkpoints/
+__pycache__/
+*.parquet
+*.csv
+*.zip
+*.db
+*.sqlite
+*.rdb
+.DS_Store
