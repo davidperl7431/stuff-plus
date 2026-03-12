@@ -498,6 +498,7 @@ with tab_profile:
                     "scrollZoom": False,
                     "displayModeBar": False,
                     "doubleClick": False,
+                    "dragMode": False,
                 },
             )
 
@@ -909,6 +910,7 @@ with tab_profile:
                 "scrollZoom": False,
                 "displayModeBar": False,
                 "doubleClick": False,
+                "dragMode": False,
             },
         )
 
