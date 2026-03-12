@@ -707,7 +707,21 @@ with tab_profile:
             ivb_txt = f"{ivb:.1f}" if pd.notna(ivb) else "–"
             hb_txt = f"{hb:.1f}" if pd.notna(hb) else "–"
 
-            label = f"{pitch} — {velo_txt} mph · {ivb_txt} iVB · {hb_txt} HB"
+            latest = pitch_df.iloc[0]
+
+            velo = latest["Velo"]
+            ivb = latest["iVB"]
+            hb = latest["HB"]
+
+            if pd.notna(velo) and pd.notna(ivb) and pd.notna(hb):
+
+                velo_txt = f"{velo:.1f}"
+                ivb_txt = f"{ivb:.1f}"
+                hb_txt = f"{hb:.1f}".replace("-", "−")
+                label = f"{pitch} — {velo_txt} mph · {ivb_txt} iVB · {hb_txt} HB"
+
+            else:
+                label = pitch
 
             pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
@@ -717,8 +731,6 @@ with tab_profile:
                     use_container_width=True,
                     hide_index=True,
                 )
-
-       
         
     st.divider()
 
@@ -794,7 +806,7 @@ with tab_profile:
             color_continuous_scale="RdYlBu_r",
             color_continuous_midpoint=100,
             hover_data=["pitch_type"],
-            labels={xcol: x_title, ycol: y_title, color_col: "Stuff+", "pitch_type": "Pitch"},
+            labels={xcol: x_title, ycol: y_title, "pitch_type": "Pitch"},
             range_color=[80, 120],
         )
 
