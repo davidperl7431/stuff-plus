@@ -5,7 +5,6 @@ import plotly.express as px
 import math
 
 st.set_page_config(page_title="Stuff+ Dashboard", layout="wide")
-st.title("Stuff+ Dashboard")
 
 # -----------------------------
 # Remote data URLs
@@ -713,15 +712,14 @@ with tab_profile:
             ivb = latest["iVB"]
             hb = latest["HB"]
 
-            if pd.notna(velo) and pd.notna(ivb) and pd.notna(hb):
+            label = f"{pitch}"
 
-                velo_txt = f"{velo:.1f}"
-                ivb_txt = f"{ivb:.1f}"
-                hb_txt = f"{hb:.1f}".replace("-", "−")
-                label = f"{pitch} — {velo_txt} mph · {ivb_txt} iVB · {hb_txt} HB"
-
-            else:
-                label = pitch
+            if pd.notna(velo):
+                label += f"   {velo:.1f} mph"
+            if pd.notna(ivb):
+                label += f"   {ivb:.1f} iVB"
+            if pd.notna(hb):
+                label += f"   {hb:.1f} HB"
 
             pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
