@@ -8,3 +8,6 @@ __pycache__/
 .DS_Store
 venv/
 .venv/
+stuffplus-app/venv/
+stuffplus-app/data/*.parquet
+*.parquet
