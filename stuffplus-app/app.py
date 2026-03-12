@@ -442,6 +442,17 @@ with tab_profile:
                     "pitch_type": "Pitch",
                 },
             )
+            
+            fig.update_layout(
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="center",
+                    x=0.5
+                )
+            )
+            
             fig.update_traces(
                 marker=dict(
                     size=8,
@@ -480,7 +491,15 @@ with tab_profile:
                 )
 
             fig.update_layout(height=450, margin=dict(l=10, r=10, t=30, b=10))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                config={
+                    "scrollZoom": False,
+                    "displayModeBar": False,
+                    "doubleClick": False,
+                },
+            )
 
     # -----------------------------
     # Historical tables (below Arsenal/Movement)
@@ -799,7 +818,7 @@ with tab_profile:
         "Δ iVB vs Primary": "primary_delta_pfx_z",
     }
 
-    c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.4, 1.2])
+    c1, c2, c3 = st.columns([1.0, 1.0, 1.6])
 
     with c1:
         x_label = st.selectbox(
@@ -819,21 +838,22 @@ with tab_profile:
             sorted(dfp["pitch_type"].dropna().unique().tolist()),
             default=sorted(dfp["pitch_type"].dropna().unique().tolist()),
         )
-    with c4:
-        color_choice = st.selectbox("Color", ["Stuff+_pt", "Stuff+_global"], index=0)
+        
+    color_col = "Stuff+_pt"
 
     plot_df = dfp[dfp["pitch_type"].isin(pitch_filter)].copy()
 
-    if color_choice not in plot_df.columns:
-        color_choice = "Stuff+_pt" if "Stuff+_pt" in plot_df.columns else "Stuff+_global"
+    if color_col not in plot_df.columns:
+        st.info("Stuff+_pt is not available for this plot.")
+        st.stop()
 
     xcol = axis_candidates[x_label]
     ycol = axis_candidates[y_label]
 
-    for col in [xcol, ycol, color_choice]:
+    for col in [xcol, ycol, color_col]:
         plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
 
-    plot_df = plot_df.dropna(subset=[xcol, ycol, color_choice])
+    plot_df = plot_df.dropna(subset=[xcol, ycol, color_col])
 
     if len(plot_df) == 0:
         st.info("No data after filters for the scatter plot.")
@@ -845,11 +865,11 @@ with tab_profile:
             plot_df,
             x=xcol,
             y=ycol,
-            color=color_choice,
+            color=color_col,
             color_continuous_scale="RdYlBu_r",
             color_continuous_midpoint=100,
             hover_data=["pitch_type"],
-            labels={xcol: x_title, ycol: y_title, color_choice: "Stuff+", "pitch_type": "Pitch"},
+            labels={xcol: x_title, ycol: y_title, color_col: "Stuff+", "pitch_type": "Pitch"},
             range_color=[80, 120],
         )
 
@@ -882,7 +902,15 @@ with tab_profile:
             )
 
         fig2.update_layout(height=550, margin=dict(l=10, r=10, t=30, b=10))
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(
+            fig2,
+            use_container_width=True,
+            config={
+                "scrollZoom": False,
+                "displayModeBar": False,
+                "doubleClick": False,
+            },
+        )
 
 # -----------------------------
 # LEADERBOARD TAB (with pagination)
