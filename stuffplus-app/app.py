@@ -4,24 +4,25 @@ import numpy as np
 import plotly.express as px
 import math
 
-from pathlib import Path
-
-APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = APP_DIR / "data"
-
 st.set_page_config(page_title="Stuff+ Dashboard", layout="wide")
 st.title("Stuff+ Dashboard")
+
+# -----------------------------
+# Remote data URLs
+# -----------------------------
+DF_SCORED_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored.parquet?download=true"
+ARSENAL_SUMMARY_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/arsenal_summary.parquet?download=true"
 
 # -----------------------------
 # Load data
 # -----------------------------
 @st.cache_data
 def load_df_scored():
-    return pd.read_parquet(DATA_DIR / "df_scored.parquet")
+    return pd.read_parquet(DF_SCORED_URL)
 
 @st.cache_data
 def load_arsenal_summary():
-    return pd.read_parquet(DATA_DIR / "arsenal_summary.parquet")
+    return pd.read_parquet(ARSENAL_SUMMARY_URL)
 
 def add_arm_angle_line(fig, theta_deg, *, is_lefty: bool, xlim=(-25, 25), ylim=(-25, 25), origin_pad=2.0):
     
