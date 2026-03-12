@@ -221,7 +221,7 @@ year = st.sidebar.selectbox("Season", years, index=0)
 df_scored = load_df_scored_year(year)
 
 # Min total pitches filter (pitcher-season)
-min_total_pitches = st.sidebar.slider("Min total pitches (season)", 0, 5000, 2000, step=100)
+min_total_pitches = st.sidebar.slider("Min total pitches (season)", 0, 5000, 0, step=100)
 min_pitches_by_type = 25
 
 # -----------------------------
@@ -490,15 +490,18 @@ with tab_profile:
                     bgcolor="rgba(0,0,0,0.35)"
                 )
 
-            fig.update_layout(height=450, margin=dict(l=10, r=10, t=30, b=10))
+            fig.update_layout(
+                height=450,
+                margin=dict(l=10, r=10, t=30, b=10),
+                dragmode=False
+            )
+
             st.plotly_chart(
                 fig,
                 use_container_width=True,
                 config={
-                    "scrollZoom": False,
+                    "staticPlot": True,
                     "displayModeBar": False,
-                    "doubleClick": False,
-                    "dragMode": False,
                 },
             )
 
@@ -902,15 +905,18 @@ with tab_profile:
                 line=dict(dash="dot", color="white", width=2)
             )
 
-        fig2.update_layout(height=550, margin=dict(l=10, r=10, t=30, b=10))
+        fig2.update_layout(
+            height=550,
+            margin=dict(l=10, r=10, t=30, b=10),
+            dragmode=False
+        )
+
         st.plotly_chart(
             fig2,
             use_container_width=True,
             config={
-                "scrollZoom": False,
+                "staticPlot": True,
                 "displayModeBar": False,
-                "doubleClick": False,
-                "dragMode": False,
             },
         )
 
