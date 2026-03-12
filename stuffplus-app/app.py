@@ -810,7 +810,7 @@ with tab_profile:
             range_color=[80, 120],
         )
         
-        fig2.update_layout(coloraxis_colorbar=dict(title=""))
+        fig2.update_layout(coloraxis_showscale=False)
 
         if x_label == "HB":
             fig2.update_xaxes(range=[-25, 25], zeroline=False)
