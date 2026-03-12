@@ -681,9 +681,22 @@ with tab_profile:
             pitch_df = pitch_df.sort_values("game_year", ascending=False)
             pitch_df = pitch_df.rename(columns={"game_year": "Year"})
             pitch_df = pitch_df[["Year", "Velo", "iVB", "HB", "Arm Angle", "Extension"]]
+
+            # Skip pitches with no real data
+            if pitch_df.drop(columns=["Year"], errors="ignore").isna().all().all():
+                continue
+
+            latest = pitch_df.iloc[0]
+
+            velo = latest["Velo"]
+            ivb = latest["iVB"]
+            hb = latest["HB"]
+
+            label = f"{pitch} — {velo:.1f} mph · {ivb:.1f} iVB · {hb:.1f} HB"
+
             pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
-            with st.expander(f"{pitch}"):
+            with st.expander(label):
                 st.dataframe(
                     pitch_df,
                     use_container_width=True,
