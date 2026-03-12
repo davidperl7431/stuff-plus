@@ -659,30 +659,41 @@ with tab_profile:
             hist_shape["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH,
             ["Velo", "iVB", "HB", "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"]
         ] = np.nan
+        
+        # ---------- Historical Pitch Details ----------
+        st.subheader("Shape & Spin")
 
-                # ---------- Historical Shape ----------
-        st.subheader("Shape")
+        pitch_disp = hist_shape.copy()
 
-        shape_disp = hist_shape[
-            ["game_year", "Pitch", "Velo", "iVB", "HB", "Arm Angle", "Extension"]
-        ].copy()
+        pitch_disp["Velo"] = pd.to_numeric(pitch_disp["Velo"], errors="coerce").round(1)
+        pitch_disp["iVB"] = pd.to_numeric(pitch_disp["iVB"], errors="coerce").round(1)
+        pitch_disp["HB"] = pd.to_numeric(pitch_disp["HB"], errors="coerce").round(1)
+        pitch_disp["Arm Angle"] = pd.to_numeric(pitch_disp["Arm Angle"], errors="coerce").round(1)
+        pitch_disp["Extension"] = pd.to_numeric(pitch_disp["Extension"], errors="coerce").round(1)
+        pitch_disp["Spin"] = pd.to_numeric(pitch_disp["Spin"], errors="coerce").round(0)
+        pitch_disp["Spin Axis"] = pd.to_numeric(pitch_disp["Spin Axis"], errors="coerce").round(0)
+        pitch_disp["SSW"] = pd.to_numeric(pitch_disp["SSW"], errors="coerce").round(1)
 
-        shape_disp["Velo"] = pd.to_numeric(shape_disp["Velo"], errors="coerce").round(1)
-        shape_disp["iVB"] = pd.to_numeric(shape_disp["iVB"], errors="coerce").round(1)
-        shape_disp["HB"] = pd.to_numeric(shape_disp["HB"], errors="coerce").round(1)
-        shape_disp["Arm Angle"] = pd.to_numeric(shape_disp["Arm Angle"], errors="coerce").round(1)
-        shape_disp["Extension"] = pd.to_numeric(shape_disp["Extension"], errors="coerce").round(1)
+        pitch_disp["Spin Eff."] = (
+            pd.to_numeric(pitch_disp["Spin Eff."], errors="coerce")
+            .mul(100)
+            .round(0)
+            .map(lambda x: f"{x:.0f}%" if pd.notna(x) else np.nan)
+        )
 
-        present_pitches = list(shape_disp["Pitch"].dropna().unique())
+        present_pitches = list(pitch_disp["Pitch"].dropna().unique())
         final_pitches = [p for p in PITCH_ORDER if p in present_pitches]
 
         for pitch in final_pitches:
-            pitch_df = shape_disp[shape_disp["Pitch"] == pitch].copy()
+            pitch_df = pitch_disp[pitch_disp["Pitch"] == pitch].copy()
             pitch_df = pitch_df.sort_values("game_year", ascending=False)
             pitch_df = pitch_df.rename(columns={"game_year": "Year"})
-            pitch_df = pitch_df[["Year", "Velo", "iVB", "HB", "Arm Angle", "Extension"]]
+            pitch_df = pitch_df[[
+                "Year", "Velo", "iVB", "HB", "Arm Angle", "Extension",
+                "Spin", "Spin Axis", "Spin Eff.", "SSW"
+            ]]
 
-            # Skip pitches with no real data
+            # Skip pitches with no actual data
             if pitch_df.drop(columns=["Year"], errors="ignore").isna().all().all():
                 continue
 
@@ -692,7 +703,11 @@ with tab_profile:
             ivb = latest["iVB"]
             hb = latest["HB"]
 
-            label = f"{pitch} — {velo:.1f} mph · {ivb:.1f} iVB · {hb:.1f} HB"
+            velo_txt = f"{velo:.1f}" if pd.notna(velo) else "–"
+            ivb_txt = f"{ivb:.1f}" if pd.notna(ivb) else "–"
+            hb_txt = f"{hb:.1f}" if pd.notna(hb) else "–"
+
+            label = f"{pitch} — {velo_txt} mph · {ivb_txt} iVB · {hb_txt} HB"
 
             pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
@@ -703,40 +718,7 @@ with tab_profile:
                     hide_index=True,
                 )
 
-        # ---------- Historical Spin / SSW ----------
-        st.subheader("Spin")
-
-        spin_disp = hist_shape[
-            ["game_year", "Pitch", "Spin", "Spin Axis", "Spin Eff.", "SSW"]
-        ].copy()
-
-        spin_disp["SSW"] = pd.to_numeric(spin_disp["SSW"], errors="coerce").round(1)
-        spin_disp["Spin Eff."] = pd.to_numeric(spin_disp["Spin Eff."], errors="coerce").round(2)
-        spin_disp["Spin"] = pd.to_numeric(spin_disp["Spin"], errors="coerce").round(0)
-        spin_disp["Spin Axis"] = pd.to_numeric(spin_disp["Spin Axis"], errors="coerce").round(0)
-        spin_disp["Spin Eff."] = (
-            pd.to_numeric(spin_disp["Spin Eff."], errors="coerce")
-            .mul(100)
-            .round(0)
-            .map(lambda x: f"{x:.0f}%" if pd.notna(x) else "")
-        )
-
-        present_pitches = list(spin_disp["Pitch"].dropna().unique())
-        final_pitches = [p for p in PITCH_ORDER if p in present_pitches]
-
-        for pitch in final_pitches:
-            pitch_df = spin_disp[spin_disp["Pitch"] == pitch].copy()
-            pitch_df = pitch_df.sort_values("game_year", ascending=False)
-            pitch_df = pitch_df.rename(columns={"game_year": "Year"})
-            pitch_df = pitch_df[["Year", "Spin", "Spin Axis", "Spin Eff.", "SSW"]]
-            pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
-
-            with st.expander(f"{pitch}"):
-                st.dataframe(
-                    pitch_df,
-                    use_container_width=True,
-                    hide_index=True,
-                )
+       
         
     st.divider()
 
