@@ -439,7 +439,6 @@ with tab_profile:
                 labels={
                     "HB": "1B \u2194 3B",
                     "iVB": "iVB",
-                    "pitch_type": "Pitch",
                 },
             )
             
@@ -661,7 +660,7 @@ with tab_profile:
             ["Velo", "iVB", "HB", "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"]
         ] = np.nan
 
-        # ---------- Historical Shape ----------
+                # ---------- Historical Shape ----------
         st.subheader("Shape")
 
         shape_disp = hist_shape[
@@ -674,60 +673,22 @@ with tab_profile:
         shape_disp["Arm Angle"] = pd.to_numeric(shape_disp["Arm Angle"], errors="coerce").round(1)
         shape_disp["Extension"] = pd.to_numeric(shape_disp["Extension"], errors="coerce").round(1)
 
-        shape_metrics = ["Velo", "iVB", "HB", "Arm Angle", "Extension"]
-
-        shape_wide = shape_disp.pivot(
-            index="game_year",
-            columns="Pitch",
-            values=shape_metrics
-        )
-
         present_pitches = list(shape_disp["Pitch"].dropna().unique())
         final_pitches = [p for p in PITCH_ORDER if p in present_pitches]
 
-        desired_cols = []
         for pitch in final_pitches:
-            for metric in shape_metrics:
-                if (metric, pitch) in shape_wide.columns:
-                    desired_cols.append((metric, pitch))
+            pitch_df = shape_disp[shape_disp["Pitch"] == pitch].copy()
+            pitch_df = pitch_df.sort_values("game_year", ascending=False)
+            pitch_df = pitch_df.rename(columns={"game_year": "Year"})
+            pitch_df = pitch_df[["Year", "Velo", "iVB", "HB", "Arm Angle", "Extension"]]
+            pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
-        shape_wide = shape_wide[desired_cols]
-        shape_wide = shape_wide.swaplevel(0, 1, axis=1)
-
-        desired_cols_swapped = []
-        for pitch in final_pitches:
-            for metric in shape_metrics:
-                col = (pitch, metric)
-                if col in shape_wide.columns:
-                    desired_cols_swapped.append(col)
-
-        shape_wide = shape_wide[desired_cols_swapped]
-        shape_wide = shape_wide.dropna(axis=1, how="all")
-        shape_wide = shape_wide.replace({None: np.nan})
-        shape_wide.index = shape_wide.index.astype(int)
-        shape_wide = shape_wide.sort_index(ascending=False)
-        shape_wide = shape_wide.reset_index().rename(columns={"game_year": "Year"})
-        
-        shape_wide = shape_wide.replace({None: np.nan, "None": np.nan})
-        shape_wide = shape_wide.dropna(axis=1, how="all")
-
-        valid_cols = []
-        for col in shape_wide.columns:
-            col_data = shape_wide[col]
-            if pd.notna(col_data).any():
-                valid_cols.append(col)
-
-        shape_wide = shape_wide[valid_cols]
-        
-        shape_display = shape_wide.copy()
-
-        shape_display = shape_display.replace({None: "", "None": "", np.nan: ""})
-
-        st.dataframe(
-            shape_display,
-            use_container_width=True,
-            hide_index=True
-        )
+            with st.expander(f"{pitch}"):
+                st.dataframe(
+                    pitch_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
         # ---------- Historical Spin / SSW ----------
         st.subheader("Spin")
@@ -747,57 +708,22 @@ with tab_profile:
             .map(lambda x: f"{x:.0f}%" if pd.notna(x) else "")
         )
 
-        spin_metrics = ["Spin", "Spin Axis", "Spin Eff.", "SSW"]
-
-        spin_wide = spin_disp.pivot(
-            index="game_year",
-            columns="Pitch",
-            values=spin_metrics
-        )
-
         present_pitches = list(spin_disp["Pitch"].dropna().unique())
         final_pitches = [p for p in PITCH_ORDER if p in present_pitches]
 
-        desired_cols = []
         for pitch in final_pitches:
-            for metric in spin_metrics:
-                if (metric, pitch) in spin_wide.columns:
-                    desired_cols.append((metric, pitch))
+            pitch_df = spin_disp[spin_disp["Pitch"] == pitch].copy()
+            pitch_df = pitch_df.sort_values("game_year", ascending=False)
+            pitch_df = pitch_df.rename(columns={"game_year": "Year"})
+            pitch_df = pitch_df[["Year", "Spin", "Spin Axis", "Spin Eff.", "SSW"]]
+            pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
-        spin_wide = spin_wide[desired_cols]
-        spin_wide = spin_wide.swaplevel(0, 1, axis=1)
-
-        desired_cols_swapped = []
-        for pitch in final_pitches:
-            for metric in spin_metrics:
-                col = (pitch, metric)
-                if col in spin_wide.columns:
-                    desired_cols_swapped.append(col)
-
-        spin_wide = spin_wide[desired_cols_swapped]
-        spin_wide = spin_wide.dropna(axis=1, how="all")
-        spin_wide = spin_wide.replace({None: np.nan})
-        spin_wide.index = spin_wide.index.astype(int)
-        spin_wide = spin_wide.sort_index(ascending=False)
-        spin_wide = spin_wide.reset_index().rename(columns={"game_year": "Year"})
-        
-        valid_cols = []
-        for col in spin_wide.columns:
-            col_data = spin_wide[col]
-            if pd.notna(col_data).any():
-                valid_cols.append(col)
-
-        spin_wide = spin_wide[valid_cols]
-
-        spin_display = spin_wide.copy()
-
-        spin_display = spin_display.replace({None: "", "None": "", np.nan: ""})
-
-        st.dataframe(
-            spin_display,
-            use_container_width=True,
-            hide_index=True
-        )
+            with st.expander(f"{pitch}"):
+                st.dataframe(
+                    pitch_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
         
     st.divider()
 
