@@ -1,14 +1,22 @@
 import streamlit as st
 import pandas as pd
+import requests
+import io
 
-st.title("Arsenal summary test")
+st.title("df_scored download test")
 
-ARSENAL_SUMMARY_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/arsenal_summary.parquet?download=true"
+URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored.parquet?download=true"
 
-@st.cache_data
-def load_arsenal_summary():
-    return pd.read_parquet(ARSENAL_SUMMARY_URL)
+st.write("Downloading file...")
 
-st.write("About to load arsenal_summary")
-arsenal_summary = load_arsenal_summary()
-st.success(f"Loaded arsenal_summary: {arsenal_summary.shape}")
+r = requests.get(URL, timeout=120)
+
+st.write("Download complete")
+st.write("Bytes:", len(r.content))
+
+st.write("Parsing parquet...")
+
+df = pd.read_parquet(io.BytesIO(r.content))
+
+st.success("Loaded!")
+st.write(df.shape)
