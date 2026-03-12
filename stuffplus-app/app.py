@@ -7,6 +7,8 @@ import math
 st.set_page_config(page_title="Stuff+ Dashboard", layout="wide")
 st.title("Stuff+ Dashboard")
 
+st.sidebar.caption("BUILD_MARKER: HF_URL_VERSION_1")
+
 # -----------------------------
 # Remote data URLs
 # -----------------------------
