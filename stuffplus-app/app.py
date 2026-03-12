@@ -809,6 +809,8 @@ with tab_profile:
             labels={xcol: x_title, ycol: y_title, "pitch_type": "Pitch"},
             range_color=[80, 120],
         )
+        
+        fig2.update_layout(coloraxis_colorbar=dict(title=""))
 
         if x_label == "HB":
             fig2.update_xaxes(range=[-25, 25], zeroline=False)
