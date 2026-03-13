@@ -214,38 +214,50 @@ pitcher_history = load_pitcher_history()
 # -----------------------------
 st.sidebar.header("Filters")
 
-years = sorted(pitcher_history["game_year"].dropna().unique().tolist(), reverse=True)
-year = st.sidebar.selectbox("Season", years, index=0)
-
-df_scored = load_df_scored_year(year)
-
-# Min total pitches filter (pitcher-season)
-min_total_pitches = st.sidebar.slider("Min total pitches (season)", 0, 5000, 0, step=100)
-min_pitches_by_type = 25
-
-# -----------------------------
-# Pitcher list + pitcher selector
-# -----------------------------
-ph = pitcher_history.copy()
-ph_year = ph[ph["game_year"] == year].copy()
-
-pitcher_totals = (
-    ph_year.groupby("PlayerName", as_index=False)["Pitches"]
-    .sum()
-    .rename(columns={"Pitches": "n_total"})
-)
-
-pitcher_totals = pitcher_totals[
-    pd.to_numeric(pitcher_totals["n_total"], errors="coerce") >= min_total_pitches
-].copy()
-
-pitcher_list = (
-    pitcher_totals["PlayerName"]
+all_pitchers = (
+    pitcher_history["PlayerName"]
     .dropna()
     .sort_values()
     .unique()
     .tolist()
 )
+
+previous_pitcher = st.session_state.get("pitcher_name")
+
+if len(all_pitchers) == 0:
+    pitcher_name = None
+    st.session_state["pitcher_name"] = None
+    st.sidebar.info("No pitchers available.")
+else:
+    if previous_pitcher in all_pitchers:
+        default_index = all_pitchers.index(previous_pitcher)
+    else:
+        default_index = 0
+
+    pitcher_name = st.sidebar.selectbox(
+        "Pitcher",
+        all_pitchers,
+        index=default_index,
+        key="pitcher_name",
+    )
+
+if pitcher_name is None:
+    st.stop()
+
+years = (
+    pitcher_history.loc[pitcher_history["PlayerName"] == pitcher_name, "game_year"]
+    .dropna()
+    .astype(int)
+    .sort_values(ascending=False)
+    .unique()
+    .tolist()
+)
+
+year = st.sidebar.selectbox("Season", years, index=0)
+
+df_scored = load_df_scored_year(year)
+
+min_pitches_by_type = 25
 
 previous_pitcher = st.session_state.get("pitcher_name")
 
@@ -399,14 +411,24 @@ with tab_profile:
 
     with left:
         st.subheader("Overview")
+
+        overview_disp = ars_display[[
+            "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
+        ]].copy()
+
+        # Force one decimal place
+        for col in ["Velo", "iVB", "HB"]:
+            overview_disp[col] = (
+                pd.to_numeric(overview_disp[col], errors="coerce")
+                .map(lambda x: f"{x:.1f}" if pd.notna(x) else "")
+            )
+
         st.dataframe(
-            ars_display[[
-                "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
-            ]],
+            overview_disp,
             use_container_width=True,
             hide_index=True,
         )
-        
+
         st.subheader("Usage Splits")
         st.dataframe(
             usage_splits,
@@ -715,11 +737,11 @@ with tab_profile:
             label = f"{pitch}"
 
             if pd.notna(velo):
-                label += f"   {velo:.1f} mph"
+                label += f"             {velo:.1f} mph"
             if pd.notna(ivb):
-                label += f"   {ivb:.1f} iVB"
+                label += f"        {ivb:.1f} iVB"
             if pd.notna(hb):
-                label += f"   {hb:.1f} HB"
+                label += f"        {hb:.1f} HB"
 
             pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
