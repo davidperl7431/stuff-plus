@@ -222,6 +222,8 @@ all_pitchers = (
     .tolist()
 )
 
+previous_pitcher = st.session_state.get("pitcher_name")
+
 if len(all_pitchers) == 0:
     pitcher_name = None
     st.session_state["pitcher_name"] = None
@@ -254,14 +256,8 @@ years = (
 year = st.sidebar.selectbox("Season", years, index=0)
 
 df_scored = load_df_scored_year(year)
-
 min_pitches_by_type = 25
 
-previous_pitcher = st.session_state.get("pitcher_name")
-
-if pitcher_name is None:
-    st.stop()
-    
 # -----------------------------
 # Tabs
 # -----------------------------
