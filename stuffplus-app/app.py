@@ -440,6 +440,8 @@ with tab_profile:
                 },
             )
             
+            fig.update_layout(legend_title_text="")
+            
             fig.update_layout(
                 legend=dict(
                     orientation="h",
