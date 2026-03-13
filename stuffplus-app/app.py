@@ -261,19 +261,19 @@ min_pitches_by_type = 25
 
 previous_pitcher = st.session_state.get("pitcher_name")
 
-if len(pitcher_list) == 0:
+if len(all_pitchers) == 0:
     pitcher_name = None
     st.session_state["pitcher_name"] = None
     st.sidebar.info("No pitchers match the current filters.")
 else:
-    if previous_pitcher in pitcher_list:
-        default_index = pitcher_list.index(previous_pitcher)
+    if previous_pitcher in all_pitchers:
+        default_index = all_pitchers.index(previous_pitcher)
     else:
         default_index = 0
 
     pitcher_name = st.sidebar.selectbox(
         "Pitcher",
-        pitcher_list,
+        all_pitchers,
         index=default_index,
         key="pitcher_name",
     )
