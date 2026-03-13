@@ -711,14 +711,14 @@ with tab_profile:
             ivb = latest["iVB"]
             hb = latest["HB"]
 
-            label = f"{pitch}"
+            nbsp = "\u00A0"
 
-            if pd.notna(velo):
-                label += f" | {velo:.1f} mph"
-            if pd.notna(ivb):
-                label += f" | {ivb:.1f} iVB"
-            if pd.notna(hb):
-                label += f" | {hb:.1f} HB"
+            label = (
+                f"{pitch}"
+                f"{nbsp*8}{velo:.1f} mph"
+                f"{nbsp*8}{ivb:.1f} iVB"
+                f"{nbsp*8}{hb:.1f} HB"
+            )
 
             pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
 
