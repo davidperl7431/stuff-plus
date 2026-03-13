@@ -259,538 +259,538 @@ df_scored = load_df_scored_year(year)
 
 min_pitches_by_type = 25
     
-    # Determine handedness from pitch-level data
-    if "is_lefty" in dfp.columns and dfp["is_lefty"].notna().any():
-        raw_lefty = dfp["is_lefty"].iloc[0]
-    else:
-        raw_lefty = 0
+# Determine handedness from pitch-level data
+if "is_lefty" in dfp.columns and dfp["is_lefty"].notna().any():
+    raw_lefty = dfp["is_lefty"].iloc[0]
+else:
+    raw_lefty = 0
 
-    is_lefty = int(raw_lefty) == 1
-    handedness = "LHP" if is_lefty else "RHP"
+is_lefty = int(raw_lefty) == 1
+handedness = "LHP" if is_lefty else "RHP"
 
-    dfp["HB"] = pd.to_numeric(dfp["HB_obs"], errors="coerce")
-    dfp["iVB"] = pd.to_numeric(dfp["iVB_obs"], errors="coerce")
-    dfp["arm_angle"] = pd.to_numeric(dfp.get("arm_angle"), errors="coerce")
-    dfp["ssw_in"] = pd.to_numeric(dfp.get("ssw_in"), errors="coerce")
-    dfp["spin_efficiency"] = pd.to_numeric(dfp.get("spin_efficiency"), errors="coerce")
+dfp["HB"] = pd.to_numeric(dfp["HB_obs"], errors="coerce")
+dfp["iVB"] = pd.to_numeric(dfp["iVB_obs"], errors="coerce")
+dfp["arm_angle"] = pd.to_numeric(dfp.get("arm_angle"), errors="coerce")
+dfp["ssw_in"] = pd.to_numeric(dfp.get("ssw_in"), errors="coerce")
+dfp["spin_efficiency"] = pd.to_numeric(dfp.get("spin_efficiency"), errors="coerce")
 
-    # (2) Arsenal table (grouped)
-    ars = (
-        dfp.groupby("pitch_type", as_index=False)
-           .agg(
-               Pitches=("pitch_type", "size"),
-               StuffPlus=("Stuff+_pt", "mean"),
-               Velo=("release_speed", "mean"),
-               HB=("HB", "mean"),
-               iVB=("iVB", "mean"),
-               ArmAngle=("arm_angle", "mean"),
-               Extension=("release_extension", "mean"),
-               SSW=("ssw_in", "mean"),
-               SpinEff=("spin_efficiency", "mean"),
-               Spin=("release_spin_rate", "mean"),
-               SpinAxis=("spin_axis", "mean"),
-           )
+# (2) Arsenal table (grouped)
+ars = (
+    dfp.groupby("pitch_type", as_index=False)
+       .agg(
+           Pitches=("pitch_type", "size"),
+           StuffPlus=("Stuff+_pt", "mean"),
+           Velo=("release_speed", "mean"),
+           HB=("HB", "mean"),
+           iVB=("iVB", "mean"),
+           ArmAngle=("arm_angle", "mean"),
+           Extension=("release_extension", "mean"),
+           SSW=("ssw_in", "mean"),
+           SpinEff=("spin_efficiency", "mean"),
+           Spin=("release_spin_rate", "mean"),
+           SpinAxis=("spin_axis", "mean"),
+       )
+)
+
+# Filter by min pitches per pitch type
+ars = ars[ars["Pitches"] >= min_pitches_by_type].copy()
+
+# Sort by Usage %
+ars = ars.sort_values("Pitches", ascending=False)
+
+# Display formatting
+ars_display = ars.copy()
+ars_display["StuffPlus"] = ars_display["StuffPlus"].round(0)
+ars_display["Velo"] = ars_display["Velo"].round(1)
+ars_display["iVB"] = ars_display["iVB"].round(1)
+ars_display["HB"] = ars_display["HB"].round(1)
+ars_display["Extension"] = ars_display["Extension"].round(1)
+ars_display["Arm Angle"] = pd.to_numeric(ars_display["ArmAngle"], errors="coerce").round(1)
+ars_display["Spin"] = ars_display["Spin"].round(0)
+ars_display["Spin Axis"] = pd.to_numeric(ars_display["SpinAxis"], errors="coerce").round(0)
+ars_display["SSW"] = pd.to_numeric(ars_display["SSW"], errors="coerce").round(1)
+ars_display["Spin Eff."] = (
+    pd.to_numeric(ars_display["SpinEff"], errors="coerce")
+    .mul(100).round(0)
+    .map(lambda x: f"{x:.0f}%" if pd.notna(x) else ""))
+ars_display = ars_display.rename(columns={"StuffPlus": "Stuff+", "pitch_type": "Pitch"})
+arsenal_pitch_order = ars_display["Pitch"].tolist()
+
+usage_splits = build_usage_splits(
+    dfp,
+    pitch_order=arsenal_pitch_order,
+    pitch_type_col="pitch_type",
+    min_pitches=min_pitches_by_type
+)
+
+# Layout: table + movement plot
+left, right = st.columns([1.35, 1.0])
+
+with left:
+    st.subheader("Overview")
+
+    overview_disp = ars_display[[
+        "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
+    ]].copy()
+
+    # Force one decimal place
+    for col in ["Velo", "iVB", "HB"]:
+        overview_disp[col] = (
+            pd.to_numeric(overview_disp[col], errors="coerce")
+            .map(lambda x: f"{x:.1f}" if pd.notna(x) else "")
+        )
+
+    st.dataframe(
+        overview_disp,
+        use_container_width=True,
+        hide_index=True,
     )
 
-    # Filter by min pitches per pitch type
-    ars = ars[ars["Pitches"] >= min_pitches_by_type].copy()
-
-    # Sort by Usage %
-    ars = ars.sort_values("Pitches", ascending=False)
-
-    # Display formatting
-    ars_display = ars.copy()
-    ars_display["StuffPlus"] = ars_display["StuffPlus"].round(0)
-    ars_display["Velo"] = ars_display["Velo"].round(1)
-    ars_display["iVB"] = ars_display["iVB"].round(1)
-    ars_display["HB"] = ars_display["HB"].round(1)
-    ars_display["Extension"] = ars_display["Extension"].round(1)
-    ars_display["Arm Angle"] = pd.to_numeric(ars_display["ArmAngle"], errors="coerce").round(1)
-    ars_display["Spin"] = ars_display["Spin"].round(0)
-    ars_display["Spin Axis"] = pd.to_numeric(ars_display["SpinAxis"], errors="coerce").round(0)
-    ars_display["SSW"] = pd.to_numeric(ars_display["SSW"], errors="coerce").round(1)
-    ars_display["Spin Eff."] = (
-        pd.to_numeric(ars_display["SpinEff"], errors="coerce")
-        .mul(100).round(0)
-        .map(lambda x: f"{x:.0f}%" if pd.notna(x) else ""))
-    ars_display = ars_display.rename(columns={"StuffPlus": "Stuff+", "pitch_type": "Pitch"})
-    arsenal_pitch_order = ars_display["Pitch"].tolist()
-    
-    usage_splits = build_usage_splits(
-        dfp,
-        pitch_order=arsenal_pitch_order,
-        pitch_type_col="pitch_type",
-        min_pitches=min_pitches_by_type
+    st.subheader("Usage Splits")
+    st.dataframe(
+        usage_splits,
+        use_container_width=True,
+        hide_index=True,
     )
-    
-    # Layout: table + movement plot
-    left, right = st.columns([1.35, 1.0])
 
-    with left:
-        st.subheader("Overview")
+arm_angle = float(dfp["arm_angle"].mean()) if dfp["arm_angle"].notna().any() else None
 
-        overview_disp = ars_display[[
-            "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
-        ]].copy()
-
-        # Force one decimal place
-        for col in ["Velo", "iVB", "HB"]:
-            overview_disp[col] = (
-                pd.to_numeric(overview_disp[col], errors="coerce")
-                .map(lambda x: f"{x:.1f}" if pd.notna(x) else "")
-            )
-
-        st.dataframe(
-            overview_disp,
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        st.subheader("Usage Splits")
-        st.dataframe(
-            usage_splits,
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    arm_angle = float(dfp["arm_angle"].mean()) if dfp["arm_angle"].notna().any() else None
-
-    with right:
-        st.subheader("Movement")
-        if len(dfp) == 0:
-            st.info("No pitches available.")
-        else:
-            fig = px.scatter(
-                dfp,
-                x="HB",
-                y="iVB",
-                color="pitch_type",
-                color_discrete_map=PITCH_COLORS,
-                category_orders={"pitch_type": [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]},
-                opacity=0.75,
-                hover_data={
-                    "pitch_type": True,
-                    "release_speed": ':.1f',
-                    "release_spin_rate": ':.0f',
-                    "Stuff+_pt": ':.1f',
-                },
-                labels={
-                    "HB": "1B \u2194 3B",
-                    "iVB": "iVB",
-                },
-            )
-            
-            fig.update_layout(
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="center",
-                    x=0.5
-                )
-            )
-            
-            fig.update_traces(
-                marker=dict(
-                    size=8,
-                    line=dict(width=0.5, color="black")
-                )
-            )
-
-            fig.update_xaxes(range=[-25, 25], zeroline=False)
-            fig.update_yaxes(range=[-25, 25], zeroline=False)
-
-            fig.add_shape(
-                type="line",
-                x0=0, x1=0,
-                y0=-25, y1=25,
-                line=dict(dash="dot", color="white", width=2)
-            )
-            fig.add_shape(
-                type="line",
-                x0=-25, x1=25,
-                y0=0, y1=0,
-                line=dict(dash="dot", color="white", width=2)
-            )
-
-            # Arm-angle reference line
-            if arm_angle is not None:
-                add_arm_angle_line(fig, arm_angle, is_lefty=is_lefty, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
-                fig.add_annotation(
-                    x=24,
-                    y=-23,
-                    text=f"Arm Angle: {arm_angle:.0f}°",
-                    showarrow=False,
-                    xanchor="right",
-                    yanchor="bottom",
-                    font=dict(color="white", size=12),
-                    bgcolor="rgba(0,0,0,0.35)"
-                )
-
-            fig.update_layout(
-                height=450,
-                margin=dict(l=10, r=10, t=30, b=10),
-                dragmode=False
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={
-                    "staticPlot": True,
-                    "displayModeBar": False,
-                },
-            )
-
-    # -----------------------------
-    # Historical tables (below Arsenal/Movement)
-    # -----------------------------
-    hist = pitcher_history[pitcher_history["PlayerName"] == pitcher_name].copy()
-    hist = hist[hist["game_year"].notna() & hist["pitch_type"].notna()].copy()
-
-    hist["HB"] = pd.to_numeric(hist["HB"], errors="coerce")
-    hist["iVB"] = pd.to_numeric(hist["iVB"], errors="coerce")
-    hist["SSW"] = pd.to_numeric(hist["SSW"], errors="coerce")
-    hist["SpinEff"] = pd.to_numeric(hist["SpinEff"], errors="coerce")
-    hist["Spin"] = pd.to_numeric(hist["Spin"], errors="coerce")
-    hist["SpinAxis"] = pd.to_numeric(hist["SpinAxis"], errors="coerce")
-    hist["ArmAngle"] = pd.to_numeric(hist["ArmAngle"], errors="coerce")
-    hist["Extension"] = pd.to_numeric(hist["Extension"], errors="coerce")
-    hist["StuffPlus"] = pd.to_numeric(hist["StuffPlus"], errors="coerce")
-    hist["Pitches"] = pd.to_numeric(hist["Pitches"], errors="coerce")
-
-    if len(hist) == 0:
-        st.info("No historical pitch data available for this pitcher.")
+with right:
+    st.subheader("Movement")
+    if len(dfp) == 0:
+        st.info("No pitches available.")
     else:
-        col1, col2 = st.columns(2)
-
-        # (1) Historical Arsenal
-        with col1:
-            st.subheader("Arsenal")
-
-            g = hist[["game_year", "pitch_type", "Pitches"]].copy().rename(columns={"pitch_type": "Pitch"})
-            totals = (
-                g.groupby("game_year", as_index=False)["Pitches"]
-                .sum()
-                .rename(columns={"Pitches": "Pitches_total"})
-            )
-            g = g.merge(totals, on="game_year", how="left")
-            g["Usage"] = g["Pitches"] / g["Pitches_total"]
-            
-            usage_wide = g.pivot(index="game_year", columns="Pitch", values="Usage").fillna(0.0)
-            usage_wide = usage_wide.sort_index(ascending=False)
-
-            present_pitches = [p for p in PITCH_ORDER if p in usage_wide.columns]
-            usage_wide = usage_wide.reindex(columns=present_pitches)
-
-            usage_wide.columns = [f"{c} %" for c in usage_wide.columns]
-
-            usage_wide_display = usage_wide.copy()
-            for c in usage_wide_display.columns:
-                usage_wide_display[c] = (
-                    pd.to_numeric(usage_wide_display[c], errors="coerce")
-                    .mul(100)
-                    .round(1)
-                    .map(lambda x: f"{x:.1f}%" if pd.notna(x) else "")
-                )
-
-            usage_wide_display.index = usage_wide_display.index.astype(int)
-            usage_wide_display = usage_wide_display.reset_index().rename(columns={"game_year": "Year"})
-            column_config = {"Year": st.column_config.NumberColumn(width="small")}
-
-            for c in usage_wide_display.columns:
-                if c != "Year":
-                    column_config[c] = st.column_config.TextColumn(width="small")
-            
-            st.dataframe(
-                usage_wide_display,
-                use_container_width=True,
-                hide_index=True,
-                column_config=column_config
-            )
-            
-        # (2) Historical Stuff+
-        with col2:
-            st.subheader("Stuff+")
-
-            s = hist[["game_year", "pitch_type", "Pitches", "StuffPlus"]].copy().rename(columns={"pitch_type": "Pitch"})
-            MIN_PITCHES_FOR_YEAR_PITCH = 25
-            s.loc[s["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH, "StuffPlus"] = np.nan
-
-            overall_year = (
-                s.groupby("game_year", as_index=False)
-                .apply(lambda x: pd.Series({
-                    "Stuff+": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
-                    if x["StuffPlus"].notna().any() and x["Pitches"].sum() > 0 else np.nan
-                }))
-                .reset_index(drop=True)
-            )
-
-            stuff_wide = s.pivot(index="game_year", columns="Pitch", values="StuffPlus")
-
-            present_pitches = [p for p in PITCH_ORDER if p in stuff_wide.columns]
-            stuff_wide = stuff_wide.reindex(columns=present_pitches)
-
-            stuff_wide = stuff_wide.rename(columns=lambda c: f"{c} Stuff+")
-
-            out = overall_year.merge(stuff_wide, left_on="game_year", right_index=True, how="left")
-            out = out.sort_values("game_year", ascending=False)
-
-            out["game_year"] = out["game_year"].astype(int)
-            out["Stuff+"] = out["Stuff+"].round(0)
-
-            pitch_cols = [f"{p} Stuff+" for p in present_pitches]
-            for c in pitch_cols:
-                out[c] = pd.to_numeric(out[c], errors="coerce").round(0)
-
-            out = out.rename(columns={"game_year": "Year"})
-
-            column_config = {
-                c: st.column_config.NumberColumn(width="small")
-                for c in (["Year", "Stuff+"] + pitch_cols)
-            }
-
-            stuff_display = out.copy()
-
-            # Turn values into display-friendly strings
-            stuff_display["Stuff+"] = (
-                pd.to_numeric(stuff_display["Stuff+"], errors="coerce")
-                .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
-            )
-
-            for c in pitch_cols:
-                stuff_display[c] = (
-                    pd.to_numeric(stuff_display[c], errors="coerce")
-                    .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
-                )
-
-            column_config = {
-                "Year": st.column_config.NumberColumn(width="small"),
-                "Stuff+": st.column_config.TextColumn(width="small"),
-            }
-
-            for c in pitch_cols:
-                column_config[c] = st.column_config.TextColumn(width="small")
-
-            st.dataframe(
-                stuff_display[["Year", "Stuff+"] + pitch_cols],
-                use_container_width=True,
-                hide_index=True,
-                column_config=column_config
-            )
-            
-        # -----------------------------
-        # Historical Shape / Spin
-        # -----------------------------
-        hist_shape = hist.rename(columns={
-            "pitch_type": "Pitch",
-            "ArmAngle": "Arm Angle",
-            "SpinAxis": "Spin Axis",
-            "SpinEff": "Spin Eff."
-        })[[
-            "game_year", "Pitch", "Pitches", "Velo", "iVB", "HB",
-            "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"
-        ]].copy()
-
-        MIN_PITCHES_FOR_YEAR_PITCH = 25
-        hist_shape.loc[
-            hist_shape["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH,
-            ["Velo", "iVB", "HB", "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"]
-        ] = np.nan
-        
-        # ---------- Historical Pitch Details ----------
-        st.subheader("Shape & Spin")
-
-        pitch_disp = hist_shape.copy()
-
-        pitch_disp["Velo"] = pd.to_numeric(pitch_disp["Velo"], errors="coerce").round(1)
-        pitch_disp["iVB"] = pd.to_numeric(pitch_disp["iVB"], errors="coerce").round(1)
-        pitch_disp["HB"] = pd.to_numeric(pitch_disp["HB"], errors="coerce").round(1)
-        pitch_disp["Arm Angle"] = pd.to_numeric(pitch_disp["Arm Angle"], errors="coerce").round(1)
-        pitch_disp["Extension"] = pd.to_numeric(pitch_disp["Extension"], errors="coerce").round(1)
-        pitch_disp["Spin"] = pd.to_numeric(pitch_disp["Spin"], errors="coerce").round(0)
-        pitch_disp["Spin Axis"] = pd.to_numeric(pitch_disp["Spin Axis"], errors="coerce").round(0)
-        pitch_disp["SSW"] = pd.to_numeric(pitch_disp["SSW"], errors="coerce").round(1)
-
-        pitch_disp["Spin Eff."] = (
-            pd.to_numeric(pitch_disp["Spin Eff."], errors="coerce")
-            .mul(100)
-            .round(0)
-            .map(lambda x: f"{x:.0f}%" if pd.notna(x) else np.nan)
+        fig = px.scatter(
+            dfp,
+            x="HB",
+            y="iVB",
+            color="pitch_type",
+            color_discrete_map=PITCH_COLORS,
+            category_orders={"pitch_type": [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]},
+            opacity=0.75,
+            hover_data={
+                "pitch_type": True,
+                "release_speed": ':.1f',
+                "release_spin_rate": ':.0f',
+                "Stuff+_pt": ':.1f',
+            },
+            labels={
+                "HB": "1B \u2194 3B",
+                "iVB": "iVB",
+            },
         )
 
-        present_pitches = list(pitch_disp["Pitch"].dropna().unique())
-        final_pitches = [p for p in PITCH_ORDER if p in present_pitches]
-
-        for pitch in final_pitches:
-            pitch_df = pitch_disp[pitch_disp["Pitch"] == pitch].copy()
-            pitch_df = pitch_df.sort_values("game_year", ascending=False)
-            pitch_df = pitch_df.rename(columns={"game_year": "Year"})
-            pitch_df = pitch_df[[
-                "Year", "Velo", "iVB", "HB", "Arm Angle", "Extension",
-                "Spin", "Spin Axis", "Spin Eff.", "SSW"
-            ]]
-
-            # Skip pitches with no actual data
-            if pitch_df.drop(columns=["Year"], errors="ignore").isna().all().all():
-                continue
-
-            latest = pitch_df.iloc[0]
-
-            velo = latest["Velo"]
-            ivb = latest["iVB"]
-            hb = latest["HB"]
-
-            velo_txt = f"{velo:.1f}" if pd.notna(velo) else "–"
-            ivb_txt = f"{ivb:.1f}" if pd.notna(ivb) else "–"
-            hb_txt = f"{hb:.1f}" if pd.notna(hb) else "–"
-
-            latest = pitch_df.iloc[0]
-
-            velo = latest["Velo"]
-            ivb = latest["iVB"]
-            hb = latest["HB"]
-
-            label = f"{pitch}"
-
-            if pd.notna(velo):
-                label += f"             {velo:.1f} mph"
-            if pd.notna(ivb):
-                label += f"        {ivb:.1f} iVB"
-            if pd.notna(hb):
-                label += f"        {hb:.1f} HB"
-
-            pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
-
-            with st.expander(label):
-                st.dataframe(
-                    pitch_df,
-                    use_container_width=True,
-                    hide_index=True,
-                )
-        
-    st.divider()
-
-    # -----------------------------
-    # Stuff+ scatter: selectable axes, colored by Stuff+
-    # -----------------------------
-    st.subheader("Stuff+")
-
-    axis_candidates = {
-        "HB": "HB",
-        "iVB": "iVB",
-        "Velo": "release_speed",
-        "Spin": "release_spin_rate",
-        "Extension": "release_extension",
-        "Release X": "release_pos_x",
-        "Release Z": "release_pos_z",
-        "Spin Axis X": "spin_axis_x",
-        "Spin Axis Y": "spin_axis_y",
-        "Spin Efficiency": "spin_efficiency",
-        "Δ Velo vs Primary": "primary_delta_release_speed",
-        "Δ HB vs Primary": "primary_delta_pfx_x",
-        "Δ iVB vs Primary": "primary_delta_pfx_z",
-    }
-
-    c1, c2, c3 = st.columns([1.0, 1.0, 1.6])
-
-    with c1:
-        x_label = st.selectbox(
-            "X axis",
-            list(axis_candidates.keys()),
-            index=list(axis_candidates.keys()).index("HB")
+        fig.update_layout(
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            )
         )
-    with c2:
-        y_label = st.selectbox(
-            "Y axis",
-            list(axis_candidates.keys()),
-            index=list(axis_candidates.keys()).index("iVB")
+
+        fig.update_traces(
+            marker=dict(
+                size=8,
+                line=dict(width=0.5, color="black")
+            )
         )
-    with c3:
-        pitch_filter = st.multiselect(
-            "Pitch types",
-            sorted(dfp["pitch_type"].dropna().unique().tolist()),
-            default=sorted(dfp["pitch_type"].dropna().unique().tolist()),
+
+        fig.update_xaxes(range=[-25, 25], zeroline=False)
+        fig.update_yaxes(range=[-25, 25], zeroline=False)
+
+        fig.add_shape(
+            type="line",
+            x0=0, x1=0,
+            y0=-25, y1=25,
+            line=dict(dash="dot", color="white", width=2)
         )
-        
-    color_col = "Stuff+_pt"
-
-    plot_df = dfp[dfp["pitch_type"].isin(pitch_filter)].copy()
-
-    if color_col not in plot_df.columns:
-        st.info("Stuff+_pt is not available for this plot.")
-        st.stop()
-
-    xcol = axis_candidates[x_label]
-    ycol = axis_candidates[y_label]
-
-    for col in [xcol, ycol, color_col]:
-        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
-
-    plot_df = plot_df.dropna(subset=[xcol, ycol, color_col])
-
-    if len(plot_df) == 0:
-        st.info("No data after filters for the scatter plot.")
-    else:
-        x_title = "1B \u2194 3B" if x_label == "HB" else x_label
-        y_title = y_label
-
-        fig2 = px.scatter(
-            plot_df,
-            x=xcol,
-            y=ycol,
-            color=color_col,
-            color_continuous_scale="RdYlBu_r",
-            color_continuous_midpoint=100,
-            hover_data=["pitch_type"],
-            labels={xcol: x_title, ycol: y_title, "pitch_type": "Pitch"},
-            range_color=[80, 120],
+        fig.add_shape(
+            type="line",
+            x0=-25, x1=25,
+            y0=0, y1=0,
+            line=dict(dash="dot", color="white", width=2)
         )
-        
-        fig2.update_layout(coloraxis_showscale=False)
 
-        if x_label == "HB":
-            fig2.update_xaxes(range=[-25, 25], zeroline=False)
-        else:
-            fig2.update_xaxes(zeroline=False)
-
-        if y_label == "iVB":
-            fig2.update_yaxes(range=[-25, 25], zeroline=False)
-        else:
-            fig2.update_yaxes(zeroline=False)
-
-        if x_label == "HB":
-            fig2.add_shape(
-                type="line",
-                x0=0, x1=0,
-                y0=-25 if y_label == "iVB" else float(plot_df[ycol].min()),
-                y1=25 if y_label == "iVB" else float(plot_df[ycol].max()),
-                line=dict(dash="dot", color="white", width=2)
+        # Arm-angle reference line
+        if arm_angle is not None:
+            add_arm_angle_line(fig, arm_angle, is_lefty=is_lefty, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
+            fig.add_annotation(
+                x=24,
+                y=-23,
+                text=f"Arm Angle: {arm_angle:.0f}°",
+                showarrow=False,
+                xanchor="right",
+                yanchor="bottom",
+                font=dict(color="white", size=12),
+                bgcolor="rgba(0,0,0,0.35)"
             )
 
-        if y_label == "iVB":
-            fig2.add_shape(
-                type="line",
-                x0=-25 if x_label == "HB" else float(plot_df[xcol].min()),
-                x1=25 if x_label == "HB" else float(plot_df[xcol].max()),
-                y0=0, y1=0,
-                line=dict(dash="dot", color="white", width=2)
-            )
-
-        fig2.update_layout(
-            height=550,
+        fig.update_layout(
+            height=450,
             margin=dict(l=10, r=10, t=30, b=10),
             dragmode=False
         )
 
         st.plotly_chart(
-            fig2,
+            fig,
             use_container_width=True,
             config={
                 "staticPlot": True,
                 "displayModeBar": False,
             },
         )
+
+# -----------------------------
+# Historical tables (below Arsenal/Movement)
+# -----------------------------
+hist = pitcher_history[pitcher_history["PlayerName"] == pitcher_name].copy()
+hist = hist[hist["game_year"].notna() & hist["pitch_type"].notna()].copy()
+
+hist["HB"] = pd.to_numeric(hist["HB"], errors="coerce")
+hist["iVB"] = pd.to_numeric(hist["iVB"], errors="coerce")
+hist["SSW"] = pd.to_numeric(hist["SSW"], errors="coerce")
+hist["SpinEff"] = pd.to_numeric(hist["SpinEff"], errors="coerce")
+hist["Spin"] = pd.to_numeric(hist["Spin"], errors="coerce")
+hist["SpinAxis"] = pd.to_numeric(hist["SpinAxis"], errors="coerce")
+hist["ArmAngle"] = pd.to_numeric(hist["ArmAngle"], errors="coerce")
+hist["Extension"] = pd.to_numeric(hist["Extension"], errors="coerce")
+hist["StuffPlus"] = pd.to_numeric(hist["StuffPlus"], errors="coerce")
+hist["Pitches"] = pd.to_numeric(hist["Pitches"], errors="coerce")
+
+if len(hist) == 0:
+    st.info("No historical pitch data available for this pitcher.")
+else:
+    col1, col2 = st.columns(2)
+
+    # (1) Historical Arsenal
+    with col1:
+        st.subheader("Arsenal")
+
+        g = hist[["game_year", "pitch_type", "Pitches"]].copy().rename(columns={"pitch_type": "Pitch"})
+        totals = (
+            g.groupby("game_year", as_index=False)["Pitches"]
+            .sum()
+            .rename(columns={"Pitches": "Pitches_total"})
+        )
+        g = g.merge(totals, on="game_year", how="left")
+        g["Usage"] = g["Pitches"] / g["Pitches_total"]
+
+        usage_wide = g.pivot(index="game_year", columns="Pitch", values="Usage").fillna(0.0)
+        usage_wide = usage_wide.sort_index(ascending=False)
+
+        present_pitches = [p for p in PITCH_ORDER if p in usage_wide.columns]
+        usage_wide = usage_wide.reindex(columns=present_pitches)
+
+        usage_wide.columns = [f"{c} %" for c in usage_wide.columns]
+
+        usage_wide_display = usage_wide.copy()
+        for c in usage_wide_display.columns:
+            usage_wide_display[c] = (
+                pd.to_numeric(usage_wide_display[c], errors="coerce")
+                .mul(100)
+                .round(1)
+                .map(lambda x: f"{x:.1f}%" if pd.notna(x) else "")
+            )
+
+        usage_wide_display.index = usage_wide_display.index.astype(int)
+        usage_wide_display = usage_wide_display.reset_index().rename(columns={"game_year": "Year"})
+        column_config = {"Year": st.column_config.NumberColumn(width="small")}
+
+        for c in usage_wide_display.columns:
+            if c != "Year":
+                column_config[c] = st.column_config.TextColumn(width="small")
+
+        st.dataframe(
+            usage_wide_display,
+            use_container_width=True,
+            hide_index=True,
+            column_config=column_config
+        )
+
+    # (2) Historical Stuff+
+    with col2:
+        st.subheader("Stuff+")
+
+        s = hist[["game_year", "pitch_type", "Pitches", "StuffPlus"]].copy().rename(columns={"pitch_type": "Pitch"})
+        MIN_PITCHES_FOR_YEAR_PITCH = 25
+        s.loc[s["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH, "StuffPlus"] = np.nan
+
+        overall_year = (
+            s.groupby("game_year", as_index=False)
+            .apply(lambda x: pd.Series({
+                "Stuff+": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
+                if x["StuffPlus"].notna().any() and x["Pitches"].sum() > 0 else np.nan
+            }))
+            .reset_index(drop=True)
+        )
+
+        stuff_wide = s.pivot(index="game_year", columns="Pitch", values="StuffPlus")
+
+        present_pitches = [p for p in PITCH_ORDER if p in stuff_wide.columns]
+        stuff_wide = stuff_wide.reindex(columns=present_pitches)
+
+        stuff_wide = stuff_wide.rename(columns=lambda c: f"{c} Stuff+")
+
+        out = overall_year.merge(stuff_wide, left_on="game_year", right_index=True, how="left")
+        out = out.sort_values("game_year", ascending=False)
+
+        out["game_year"] = out["game_year"].astype(int)
+        out["Stuff+"] = out["Stuff+"].round(0)
+
+        pitch_cols = [f"{p} Stuff+" for p in present_pitches]
+        for c in pitch_cols:
+            out[c] = pd.to_numeric(out[c], errors="coerce").round(0)
+
+        out = out.rename(columns={"game_year": "Year"})
+
+        column_config = {
+            c: st.column_config.NumberColumn(width="small")
+            for c in (["Year", "Stuff+"] + pitch_cols)
+        }
+
+        stuff_display = out.copy()
+
+        # Turn values into display-friendly strings
+        stuff_display["Stuff+"] = (
+            pd.to_numeric(stuff_display["Stuff+"], errors="coerce")
+            .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
+        )
+
+        for c in pitch_cols:
+            stuff_display[c] = (
+                pd.to_numeric(stuff_display[c], errors="coerce")
+                .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
+            )
+
+        column_config = {
+            "Year": st.column_config.NumberColumn(width="small"),
+            "Stuff+": st.column_config.TextColumn(width="small"),
+        }
+
+        for c in pitch_cols:
+            column_config[c] = st.column_config.TextColumn(width="small")
+
+        st.dataframe(
+            stuff_display[["Year", "Stuff+"] + pitch_cols],
+            use_container_width=True,
+            hide_index=True,
+            column_config=column_config
+        )
+
+    # -----------------------------
+    # Historical Shape / Spin
+    # -----------------------------
+    hist_shape = hist.rename(columns={
+        "pitch_type": "Pitch",
+        "ArmAngle": "Arm Angle",
+        "SpinAxis": "Spin Axis",
+        "SpinEff": "Spin Eff."
+    })[[
+        "game_year", "Pitch", "Pitches", "Velo", "iVB", "HB",
+        "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"
+    ]].copy()
+
+    MIN_PITCHES_FOR_YEAR_PITCH = 25
+    hist_shape.loc[
+        hist_shape["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH,
+        ["Velo", "iVB", "HB", "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"]
+    ] = np.nan
+
+    # ---------- Historical Pitch Details ----------
+    st.subheader("Shape & Spin")
+
+    pitch_disp = hist_shape.copy()
+
+    pitch_disp["Velo"] = pd.to_numeric(pitch_disp["Velo"], errors="coerce").round(1)
+    pitch_disp["iVB"] = pd.to_numeric(pitch_disp["iVB"], errors="coerce").round(1)
+    pitch_disp["HB"] = pd.to_numeric(pitch_disp["HB"], errors="coerce").round(1)
+    pitch_disp["Arm Angle"] = pd.to_numeric(pitch_disp["Arm Angle"], errors="coerce").round(1)
+    pitch_disp["Extension"] = pd.to_numeric(pitch_disp["Extension"], errors="coerce").round(1)
+    pitch_disp["Spin"] = pd.to_numeric(pitch_disp["Spin"], errors="coerce").round(0)
+    pitch_disp["Spin Axis"] = pd.to_numeric(pitch_disp["Spin Axis"], errors="coerce").round(0)
+    pitch_disp["SSW"] = pd.to_numeric(pitch_disp["SSW"], errors="coerce").round(1)
+
+    pitch_disp["Spin Eff."] = (
+        pd.to_numeric(pitch_disp["Spin Eff."], errors="coerce")
+        .mul(100)
+        .round(0)
+        .map(lambda x: f"{x:.0f}%" if pd.notna(x) else np.nan)
+    )
+
+    present_pitches = list(pitch_disp["Pitch"].dropna().unique())
+    final_pitches = [p for p in PITCH_ORDER if p in present_pitches]
+
+    for pitch in final_pitches:
+        pitch_df = pitch_disp[pitch_disp["Pitch"] == pitch].copy()
+        pitch_df = pitch_df.sort_values("game_year", ascending=False)
+        pitch_df = pitch_df.rename(columns={"game_year": "Year"})
+        pitch_df = pitch_df[[
+            "Year", "Velo", "iVB", "HB", "Arm Angle", "Extension",
+            "Spin", "Spin Axis", "Spin Eff.", "SSW"
+        ]]
+
+        # Skip pitches with no actual data
+        if pitch_df.drop(columns=["Year"], errors="ignore").isna().all().all():
+            continue
+
+        latest = pitch_df.iloc[0]
+
+        velo = latest["Velo"]
+        ivb = latest["iVB"]
+        hb = latest["HB"]
+
+        velo_txt = f"{velo:.1f}" if pd.notna(velo) else "–"
+        ivb_txt = f"{ivb:.1f}" if pd.notna(ivb) else "–"
+        hb_txt = f"{hb:.1f}" if pd.notna(hb) else "–"
+
+        latest = pitch_df.iloc[0]
+
+        velo = latest["Velo"]
+        ivb = latest["iVB"]
+        hb = latest["HB"]
+
+        label = f"{pitch}"
+
+        if pd.notna(velo):
+            label += f"             {velo:.1f} mph"
+        if pd.notna(ivb):
+            label += f"        {ivb:.1f} iVB"
+        if pd.notna(hb):
+            label += f"        {hb:.1f} HB"
+
+        pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
+
+        with st.expander(label):
+            st.dataframe(
+                pitch_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+st.divider()
+
+# -----------------------------
+# Stuff+ scatter: selectable axes, colored by Stuff+
+# -----------------------------
+st.subheader("Stuff+")
+
+axis_candidates = {
+    "HB": "HB",
+    "iVB": "iVB",
+    "Velo": "release_speed",
+    "Spin": "release_spin_rate",
+    "Extension": "release_extension",
+    "Release X": "release_pos_x",
+    "Release Z": "release_pos_z",
+    "Spin Axis X": "spin_axis_x",
+    "Spin Axis Y": "spin_axis_y",
+    "Spin Efficiency": "spin_efficiency",
+    "Δ Velo vs Primary": "primary_delta_release_speed",
+    "Δ HB vs Primary": "primary_delta_pfx_x",
+    "Δ iVB vs Primary": "primary_delta_pfx_z",
+}
+
+c1, c2, c3 = st.columns([1.0, 1.0, 1.6])
+
+with c1:
+    x_label = st.selectbox(
+        "X axis",
+        list(axis_candidates.keys()),
+        index=list(axis_candidates.keys()).index("HB")
+    )
+with c2:
+    y_label = st.selectbox(
+        "Y axis",
+        list(axis_candidates.keys()),
+        index=list(axis_candidates.keys()).index("iVB")
+    )
+with c3:
+    pitch_filter = st.multiselect(
+        "Pitch types",
+        sorted(dfp["pitch_type"].dropna().unique().tolist()),
+        default=sorted(dfp["pitch_type"].dropna().unique().tolist()),
+    )
+
+color_col = "Stuff+_pt"
+
+plot_df = dfp[dfp["pitch_type"].isin(pitch_filter)].copy()
+
+if color_col not in plot_df.columns:
+    st.info("Stuff+_pt is not available for this plot.")
+    st.stop()
+
+xcol = axis_candidates[x_label]
+ycol = axis_candidates[y_label]
+
+for col in [xcol, ycol, color_col]:
+    plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+
+plot_df = plot_df.dropna(subset=[xcol, ycol, color_col])
+
+if len(plot_df) == 0:
+    st.info("No data after filters for the scatter plot.")
+else:
+    x_title = "1B \u2194 3B" if x_label == "HB" else x_label
+    y_title = y_label
+
+    fig2 = px.scatter(
+        plot_df,
+        x=xcol,
+        y=ycol,
+        color=color_col,
+        color_continuous_scale="RdYlBu_r",
+        color_continuous_midpoint=100,
+        hover_data=["pitch_type"],
+        labels={xcol: x_title, ycol: y_title, "pitch_type": "Pitch"},
+        range_color=[80, 120],
+    )
+
+    fig2.update_layout(coloraxis_showscale=False)
+
+    if x_label == "HB":
+        fig2.update_xaxes(range=[-25, 25], zeroline=False)
+    else:
+        fig2.update_xaxes(zeroline=False)
+
+    if y_label == "iVB":
+        fig2.update_yaxes(range=[-25, 25], zeroline=False)
+    else:
+        fig2.update_yaxes(zeroline=False)
+
+    if x_label == "HB":
+        fig2.add_shape(
+            type="line",
+            x0=0, x1=0,
+            y0=-25 if y_label == "iVB" else float(plot_df[ycol].min()),
+            y1=25 if y_label == "iVB" else float(plot_df[ycol].max()),
+            line=dict(dash="dot", color="white", width=2)
+        )
+
+    if y_label == "iVB":
+        fig2.add_shape(
+            type="line",
+            x0=-25 if x_label == "HB" else float(plot_df[xcol].min()),
+            x1=25 if x_label == "HB" else float(plot_df[xcol].max()),
+            y0=0, y1=0,
+            line=dict(dash="dot", color="white", width=2)
+        )
+
+    fig2.update_layout(
+        height=550,
+        margin=dict(l=10, r=10, t=30, b=10),
+        dragmode=False
+    )
+
+    st.plotly_chart(
+        fig2,
+        use_container_width=True,
+        config={
+            "staticPlot": True,
+            "displayModeBar": False,
+        },
+    )
 
 # -----------------------------
 # LEADERBOARD TAB (with pagination)
