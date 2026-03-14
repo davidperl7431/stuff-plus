@@ -699,28 +699,7 @@ with tab_profile:
             ivb = latest["iVB"]
             hb = latest["HB"]
 
-            velo_txt = f"{velo:.1f}" if pd.notna(velo) else "–"
-            ivb_txt = f"{ivb:.1f}" if pd.notna(ivb) else "–"
-            hb_txt = f"{hb:.1f}" if pd.notna(hb) else "–"
-
-            latest = pitch_df.iloc[0]
-
-            velo = latest["Velo"]
-            ivb = latest["iVB"]
-            hb = latest["HB"]
-
             with st.expander(pitch):
-
-                c1, c2, c3 = st.columns([1,1,1])
-
-                with c1:
-                    st.markdown(f"**Velo:** {velo:.1f} mph")
-
-                with c2:
-                    st.markdown(f"**iVB:** {ivb:.1f}")
-
-                with c3:
-                    st.markdown(f"**HB:** {hb:.1f}")
 
                 st.dataframe(
                     pitch_df,
@@ -788,6 +767,19 @@ with tab_profile:
 
     plot_df = plot_df.dropna(subset=[xcol, ycol, color_col])
 
+    # Apply jitter to discretized columns to avoid vertical/horizontal striping
+    JITTER_COLS = {"release_pos_x", "release_pos_z", "spin_axis_x", "spin_axis_y"}
+
+    rng = np.random.default_rng(42)
+
+    plot_df_plot = plot_df.copy()
+
+    if xcol in JITTER_COLS:
+        plot_df_plot[xcol] = plot_df_plot[xcol] + rng.uniform(-0.015, 0.015, len(plot_df_plot))
+
+    if ycol in JITTER_COLS:
+        plot_df_plot[ycol] = plot_df_plot[ycol] + rng.uniform(-0.015, 0.015, len(plot_df_plot))
+
     if len(plot_df) == 0:
         st.info("No data after filters for the scatter plot.")
     else:
@@ -795,7 +787,7 @@ with tab_profile:
         y_title = y_label
 
         fig2 = px.scatter(
-            plot_df,
+            plot_df_plot,
             x=xcol,
             y=ycol,
             color=color_col,
