@@ -427,7 +427,7 @@ with tab_profile:
                 color="pitch_type",
                 color_discrete_map=PITCH_COLORS,
                 category_orders={"pitch_type": [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]},
-                opacity=0.75,
+                opacity=0.80,
                 hover_data={
                     "pitch_type": True,
                     "release_speed": ':.1f',
@@ -577,31 +577,34 @@ with tab_profile:
 
             s = hist[["game_year", "pitch_type", "Pitches", "StuffPlus"]].copy().rename(columns={"pitch_type": "Pitch"})
             MIN_PITCHES_FOR_YEAR_PITCH = 25
-            s.loc[s["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH, "StuffPlus"] = np.nan
 
+            # overall yearly Stuff+ should use all pitches
             overall_year = (
-                s.groupby("game_year", as_index=False)
+                hist.groupby("game_year", as_index=False)
                 .apply(lambda x: pd.Series({
-                    "Stuff+": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
-                    if x["StuffPlus"].notna().any() and x["Pitches"].sum() > 0 else np.nan
+                    "Overall": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
+                    if x["Pitches"].sum() > 0 else np.nan
                 }))
                 .reset_index(drop=True)
             )
+
+            # pitch-specific columns should hide low-volume pitches
+            s.loc[s["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH, "StuffPlus"] = np.nan
 
             stuff_wide = s.pivot(index="game_year", columns="Pitch", values="StuffPlus")
 
             present_pitches = [p for p in PITCH_ORDER if p in stuff_wide.columns]
             stuff_wide = stuff_wide.reindex(columns=present_pitches)
 
-            stuff_wide = stuff_wide.rename(columns=lambda c: f"{c} Stuff+")
+            stuff_wide = stuff_wide.rename(columns=lambda c: f"{c}")
 
             out = overall_year.merge(stuff_wide, left_on="game_year", right_index=True, how="left")
             out = out.sort_values("game_year", ascending=False)
 
             out["game_year"] = out["game_year"].astype(int)
-            out["Stuff+"] = out["Stuff+"].round(0)
+            out["Overall"] = out["Overall"].round(0)
 
-            pitch_cols = [f"{p} Stuff+" for p in present_pitches]
+            pitch_cols = [f"{p}" for p in present_pitches]
             for c in pitch_cols:
                 out[c] = pd.to_numeric(out[c], errors="coerce").round(0)
 
@@ -609,14 +612,14 @@ with tab_profile:
 
             column_config = {
                 c: st.column_config.NumberColumn(width="small")
-                for c in (["Year", "Stuff+"] + pitch_cols)
+                for c in (["Year", "Overall"] + pitch_cols)
             }
 
             stuff_display = out.copy()
 
             # Turn values into display-friendly strings
-            stuff_display["Stuff+"] = (
-                pd.to_numeric(stuff_display["Stuff+"], errors="coerce")
+            stuff_display["Overall"] = (
+                pd.to_numeric(stuff_display["Overall"], errors="coerce")
                 .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
             )
 
@@ -628,14 +631,14 @@ with tab_profile:
 
             column_config = {
                 "Year": st.column_config.NumberColumn(width="small"),
-                "Stuff+": st.column_config.TextColumn(width="small"),
+                "Overall": st.column_config.TextColumn(width="small"),
             }
 
             for c in pitch_cols:
                 column_config[c] = st.column_config.TextColumn(width="small")
 
             st.dataframe(
-                stuff_display[["Year", "Stuff+"] + pitch_cols],
+                stuff_display[["Year", "Overall"] + pitch_cols],
                 use_container_width=True,
                 hide_index=True,
                 column_config=column_config
