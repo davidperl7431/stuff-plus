@@ -4,7 +4,12 @@ import numpy as np
 import plotly.express as px
 import math
 
-st.set_page_config(page_title="Stuff+ Dashboard", layout="wide")
+st.set_page_config(page_title="Perl Stuff+", layout="wide")
+
+pitcher_search = st.selectbox(
+    "🔎 Search pitcher",
+    sorted(pitcher_history["PlayerName"].dropna().unique())
+)
 
 # -----------------------------
 # Remote data URLs
@@ -169,8 +174,8 @@ def build_pitch_finder_table(df, min_pitches=25):
 
     return g[[
         "Year", "Pitcher", "Handedness", "Pitch", "Pitches", "Usage %",
-        "Stuff+", "Velo", "iVB", "HB", "Spin", "Spin Axis", "Spin Eff.", "SSW",
-        "Arm Angle", "Extension"
+        "Stuff+", "Velo", "iVB", "HB", "Arm Angle", "Extension",
+        "Spin", "Spin Axis", "Spin Eff.", "SSW"
     ]]
 
 PITCH_COLORS = {
@@ -520,6 +525,11 @@ with tab_profile:
     hist["Extension"] = pd.to_numeric(hist["Extension"], errors="coerce")
     hist["StuffPlus"] = pd.to_numeric(hist["StuffPlus"], errors="coerce")
     hist["Pitches"] = pd.to_numeric(hist["Pitches"], errors="coerce")
+    
+    MIN_PITCHES_FOR_YEAR_PITCH = 25
+
+    hist_pitch = hist.copy()
+    hist_pitch = hist_pitch[hist_pitch["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
 
     if len(hist) == 0:
         st.info("No historical pitch data available for this pitcher.")
@@ -530,21 +540,23 @@ with tab_profile:
         with col1:
             st.subheader("Arsenal")
 
-            g = hist[["game_year", "pitch_type", "Pitches"]].copy().rename(columns={"pitch_type": "Pitch"})
+            MIN_PITCHES_FOR_YEAR_PITCH = 25
+            hist_pitch = hist[hist["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
+
+            g = hist_pitch[["game_year", "pitch_type", "Pitches"]].copy().rename(columns={"pitch_type": "Pitch"})
             totals = (
-                g.groupby("game_year", as_index=False)["Pitches"]
+                hist.groupby("game_year", as_index=False)["Pitches"]
                 .sum()
                 .rename(columns={"Pitches": "Pitches_total"})
             )
             g = g.merge(totals, on="game_year", how="left")
             g["Usage"] = g["Pitches"] / g["Pitches_total"]
-            
+
             usage_wide = g.pivot(index="game_year", columns="Pitch", values="Usage").fillna(0.0)
             usage_wide = usage_wide.sort_index(ascending=False)
 
             present_pitches = [p for p in PITCH_ORDER if p in usage_wide.columns]
             usage_wide = usage_wide.reindex(columns=present_pitches)
-
             usage_wide.columns = [f"{c} %" for c in usage_wide.columns]
 
             usage_wide_display = usage_wide.copy()
@@ -558,27 +570,21 @@ with tab_profile:
 
             usage_wide_display.index = usage_wide_display.index.astype(int)
             usage_wide_display = usage_wide_display.reset_index().rename(columns={"game_year": "Year"})
-            column_config = {"Year": st.column_config.NumberColumn(width="small")}
 
-            for c in usage_wide_display.columns:
-                if c != "Year":
-                    column_config[c] = st.column_config.TextColumn(width="small")
-            
             st.dataframe(
                 usage_wide_display,
                 use_container_width=True,
                 hide_index=True,
-                column_config=column_config
             )
             
         # (2) Historical Stuff+
         with col2:
             st.subheader("Stuff+")
 
-            s = hist[["game_year", "pitch_type", "Pitches", "StuffPlus"]].copy().rename(columns={"pitch_type": "Pitch"})
             MIN_PITCHES_FOR_YEAR_PITCH = 25
+            hist_pitch = hist[hist["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
 
-            # overall yearly Stuff+ should use all pitches
+            # overall from all pitches
             overall_year = (
                 hist.groupby("game_year", as_index=False)
                 .apply(lambda x: pd.Series({
@@ -588,60 +594,33 @@ with tab_profile:
                 .reset_index(drop=True)
             )
 
-            # pitch-specific columns should hide low-volume pitches
-            s.loc[s["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH, "StuffPlus"] = np.nan
-
+            # pitch-specific Stuff+ from only eligible pitches
+            s = hist_pitch[["game_year", "pitch_type", "StuffPlus"]].copy().rename(columns={"pitch_type": "Pitch"})
             stuff_wide = s.pivot(index="game_year", columns="Pitch", values="StuffPlus")
 
-            present_pitches = [p for p in PITCH_ORDER if p in stuff_wide.columns]
-            stuff_wide = stuff_wide.reindex(columns=present_pitches)
-
-            stuff_wide = stuff_wide.rename(columns=lambda c: f"{c}")
+            pitch_cols = [p for p in PITCH_ORDER if p in stuff_wide.columns]
+            stuff_wide = stuff_wide.reindex(columns=pitch_cols)
 
             out = overall_year.merge(stuff_wide, left_on="game_year", right_index=True, how="left")
             out = out.sort_values("game_year", ascending=False)
 
             out["game_year"] = out["game_year"].astype(int)
-            out["Overall"] = out["Overall"].round(0)
+            out["Overall"] = pd.to_numeric(out["Overall"], errors="coerce").round(0)
 
-            pitch_cols = [f"{p}" for p in present_pitches]
             for c in pitch_cols:
                 out[c] = pd.to_numeric(out[c], errors="coerce").round(0)
 
             out = out.rename(columns={"game_year": "Year"})
 
-            column_config = {
-                c: st.column_config.NumberColumn(width="small")
-                for c in (["Year", "Overall"] + pitch_cols)
-            }
-
             stuff_display = out.copy()
-
-            # Turn values into display-friendly strings
-            stuff_display["Overall"] = (
-                pd.to_numeric(stuff_display["Overall"], errors="coerce")
-                .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
-            )
-
+            stuff_display["Overall"] = stuff_display["Overall"].map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
             for c in pitch_cols:
-                stuff_display[c] = (
-                    pd.to_numeric(stuff_display[c], errors="coerce")
-                    .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
-                )
-
-            column_config = {
-                "Year": st.column_config.NumberColumn(width="small"),
-                "Overall": st.column_config.TextColumn(width="small"),
-            }
-
-            for c in pitch_cols:
-                column_config[c] = st.column_config.TextColumn(width="small")
+                stuff_display[c] = stuff_display[c].map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
 
             st.dataframe(
                 stuff_display[["Year", "Overall"] + pitch_cols],
                 use_container_width=True,
                 hide_index=True,
-                column_config=column_config
             )
             
         # -----------------------------
@@ -657,7 +636,7 @@ with tab_profile:
             "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"
         ]].copy()
 
-        MIN_PITCHES_FOR_YEAR_PITCH = 25
+        MIN_PITCHES_FOR_YEAR_PITCH = 10
         hist_shape.loc[
             hist_shape["Pitches"] < MIN_PITCHES_FOR_YEAR_PITCH,
             ["Velo", "iVB", "HB", "Arm Angle", "Extension", "SSW", "Spin Eff.", "Spin", "Spin Axis"]
@@ -866,7 +845,7 @@ with tab_lb:
     # Controls
     page_size = st.selectbox("Rows per page", [10, 25, 30, 50, 100, 200], index=2)
     page = st.number_input("Page", min_value=1, value=1, step=1)
-    min_pitch_for_pitchcol = 25
+    min_pitch_for_pitchcol = 10
 
     # Build pitcher-year leaderboard from df_scored (FanGraphs style):
     # Overall Stuff+ first, then Stuff+ by pitch as columns
@@ -896,7 +875,7 @@ with tab_lb:
     overall = (
         g.groupby("PlayerName", as_index=False)
          .apply(lambda x: pd.Series({
-             "Stuff+": np.average(x["StuffPlus"], weights=x["Pitches"]) if x["Pitches"].sum() > 0 else np.nan,
+             "Overall": np.average(x["StuffPlus"], weights=x["Pitches"]) if x["Pitches"].sum() > 0 else np.nan,
              "Pitches": int(x["Pitches"].sum()),
          }))
          .reset_index(drop=True)
@@ -908,23 +887,25 @@ with tab_lb:
 
     wide = g_pitch.pivot(index="PlayerName", columns="Pitch", values="StuffPlus")
 
-    # Rename columns to "Stuff+ XX"
-    wide = wide.rename(columns={c: f"Stuff+ {c}" for c in wide.columns})
+    pitch_cols_sorted = [p for p in PITCH_ORDER if p in wide.columns] + sorted(
+        [c for c in wide.columns if c not in PITCH_ORDER]
+    )
+    wide = wide.reindex(columns=pitch_cols_sorted)
 
     # Combine
     lb = overall.merge(wide, left_on="PlayerName", right_index=True, how="left")
 
     # Round Stuff+ columns to nearest int (including pitch columns)
-    stuff_cols = [c for c in lb.columns if c == "Stuff+" or c.startswith("Stuff+ ")]
+    stuff_cols = ["Overall"] + pitch_cols_sorted
     for c in stuff_cols:
-        lb[c] = pd.to_numeric(lb[c], errors="coerce").round(0)
+        if c in lb.columns:
+            lb[c] = pd.to_numeric(lb[c], errors="coerce").round(0)
 
     # Sort by overall Stuff+ (desc), then Pitches (desc)
-    lb = lb.sort_values(["Stuff+", "Pitches"], ascending=[False, False])
+    lb = lb.sort_values(["Overall", "Pitches"], ascending=[False, False])
 
     # Order columns: overall Stuff+ up front, then pitch columns
-    pitch_cols_sorted = sorted([c for c in lb.columns if c.startswith("Stuff+ ")])
-    show_cols = ["PlayerName", "Stuff+", "Pitches"] + pitch_cols_sorted
+    show_cols = ["PlayerName", "Overall", "Pitches"] + pitch_cols_sorted
 
     # Pagination
     total_rows = len(lb)
@@ -937,8 +918,20 @@ with tab_lb:
 
     st.caption(f"Showing rows {start+1}–{min(end, total_rows)} of {total_rows} (Page {page} of {total_pages})")
 
+    display_lb = lb[show_cols].iloc[start:end].reset_index(drop=True).copy()
+
+    # Make missing values display as blank instead of None
+    display_lb = display_lb.replace({None: np.nan})
+
+    for c in display_lb.columns:
+        if c != "PlayerName":
+            display_lb[c] = (
+                pd.to_numeric(display_lb[c], errors="coerce")
+                .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
+            )
+
     st.dataframe(
-        lb[show_cols].iloc[start:end].reset_index(drop=True),
+        display_lb,
         use_container_width=True,
         hide_index=True,
     )
