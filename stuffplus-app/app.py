@@ -343,12 +343,12 @@ with tab_profile:
     dfp["ssw_in"] = pd.to_numeric(dfp.get("ssw_in"), errors="coerce")
     dfp["spin_efficiency"] = pd.to_numeric(dfp.get("spin_efficiency"), errors="coerce")
 
-    # (2) Arsenal table (grouped)
-    ars = (
+    # (2) Overview table
+    # Use pitcher_history for Stuff+ so it matches the historical Stuff+ table exactly.
+    # Use dfp-derived shape/velo/spin metrics for the other columns.
+    ars_shape = (
         dfp.groupby("pitch_type", as_index=False)
            .agg(
-               Pitches=("pitch_type", "size"),
-               StuffPlus=("Stuff+_pt", "mean"),
                Velo=("release_speed", "mean"),
                HB=("HB", "mean"),
                iVB=("iVB", "mean"),
@@ -361,10 +361,20 @@ with tab_profile:
            )
     )
 
+    ars_stuff = (
+        pitcher_history[
+            (pitcher_history["PlayerName"] == pitcher_name) &
+            (pitcher_history["game_year"] == year)
+        ][["pitch_type", "Pitches", "StuffPlus"]]
+        .copy()
+    )
+
+    ars = ars_stuff.merge(ars_shape, on="pitch_type", how="left")
+
     # Filter by min pitches per pitch type
     ars = ars[ars["Pitches"] >= min_pitches_by_type].copy()
 
-    # Sort by Usage %
+    # Sort by pitch count
     ars = ars.sort_values("Pitches", ascending=False)
 
     # Display formatting
@@ -699,18 +709,19 @@ with tab_profile:
             ivb = latest["iVB"]
             hb = latest["HB"]
 
-            nbsp = "\u00A0"
+            with st.expander(pitch):
 
-            label = (
-                f"{pitch}"
-                f"{nbsp*8}{velo:.1f} mph"
-                f"{nbsp*8}{ivb:.1f} iVB"
-                f"{nbsp*8}{hb:.1f} HB"
-            )
+                c1, c2, c3 = st.columns([1,1,1])
 
-            pitch_df = pitch_df.replace({None: "", "None": "", np.nan: ""})
+                with c1:
+                    st.markdown(f"**Velo:** {velo:.1f} mph")
 
-            with st.expander(label):
+                with c2:
+                    st.markdown(f"**iVB:** {ivb:.1f}")
+
+                with c3:
+                    st.markdown(f"**HB:** {hb:.1f}")
+
                 st.dataframe(
                     pitch_df,
                     use_container_width=True,
