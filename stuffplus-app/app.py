@@ -6,11 +6,6 @@ import math
 
 st.set_page_config(page_title="Perl Stuff+", layout="wide")
 
-pitcher_search = st.selectbox(
-    "🔎 Search pitcher",
-    sorted(pitcher_history["PlayerName"].dropna().unique())
-)
-
 # -----------------------------
 # Remote data URLs
 # -----------------------------
@@ -215,9 +210,9 @@ PITCH_ORDER = [
 pitcher_history = load_pitcher_history()
 
 # -----------------------------
-# Sidebar controls
+# Main-page Pitcher / Season selectors
 # -----------------------------
-st.sidebar.header("Filters")
+st.title("Perl Stuff+")
 
 all_pitchers = (
     pitcher_history["PlayerName"]
@@ -230,24 +225,23 @@ all_pitchers = (
 previous_pitcher = st.session_state.get("pitcher_name")
 
 if len(all_pitchers) == 0:
-    pitcher_name = None
-    st.session_state["pitcher_name"] = None
-    st.sidebar.info("No pitchers match the current filters.")
-else:
-    if previous_pitcher in all_pitchers:
-        default_index = all_pitchers.index(previous_pitcher)
-    else:
-        default_index = 0
+    st.info("No pitchers available.")
+    st.stop()
 
-    pitcher_name = st.sidebar.selectbox(
-        "Pitcher",
+if previous_pitcher in all_pitchers:
+    default_pitcher_index = all_pitchers.index(previous_pitcher)
+else:
+    default_pitcher_index = 0
+
+top1, top2 = st.columns([2.2, 1.0])
+
+with top1:
+    pitcher_name = st.selectbox(
+        "🔎 Search pitcher",
         all_pitchers,
-        index=default_index,
+        index=default_pitcher_index,
         key="pitcher_name",
     )
-
-if pitcher_name is None:
-    st.stop()
 
 years = (
     pitcher_history.loc[pitcher_history["PlayerName"] == pitcher_name, "game_year"]
@@ -258,7 +252,17 @@ years = (
     .tolist()
 )
 
-year = st.sidebar.selectbox("Season", years, index=0)
+if len(years) == 0:
+    st.info("No seasons available for this pitcher.")
+    st.stop()
+
+with top2:
+    year = st.selectbox(
+        "Season",
+        years,
+        index=0,
+        key="season_select",
+    )
 
 df_scored = load_df_scored_year(year)
 min_pitches_by_type = 25
