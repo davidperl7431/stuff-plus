@@ -125,6 +125,8 @@ def build_pitch_finder_table(df, min_pitches=25):
         "Extension": ("release_extension", "mean"),
         "SpinAxis": ("spin_axis", "mean"),
         "SSW": ("ssw_in", "mean"),
+        "SSW_X": ("ssw_x", "mean"),
+        "SSW_Z": ("ssw_z", "mean"),
         "SpinEff": ("spin_efficiency", "mean"),
     }
 
@@ -159,6 +161,8 @@ def build_pitch_finder_table(df, min_pitches=25):
     g["Spin Axis"] = g["SpinAxis"].round(0)
     g["Usage %"] = g["Usage %"].round(1)
     g["SSW"] = g["SSW"].round(1)
+    g["SSW_X"] = g["SSW_X"].round(1)
+    g["SSW_Z"] = g["SSW_Z"].round(1)
     g["Spin Eff."] = g["SpinEff"].round(3)
 
     g = g.rename(columns={
@@ -170,7 +174,7 @@ def build_pitch_finder_table(df, min_pitches=25):
     return g[[
         "Year", "Pitcher", "Handedness", "Pitch", "Pitches", "Usage %",
         "Stuff+", "Velo", "iVB", "HB", "Arm Angle", "Extension",
-        "Spin", "Spin Axis", "Spin Eff.", "SSW"
+        "Spin", "Spin Axis", "Spin Eff.", "SSW", "SSW_X", "SSW_Z"
     ]]
 
 PITCH_COLORS = {
@@ -725,6 +729,9 @@ with tab_profile:
         "Spin Axis X": "spin_axis_x",
         "Spin Axis Y": "spin_axis_y",
         "Spin Efficiency": "spin_efficiency",
+        "SSW (magnitude)": "ssw_in",
+        "SSW X": "ssw_x",       # new — signed horizontal SSW
+        "SSW Z": "ssw_z",       # new — signed vertical SSW
         "Δ Velo vs Primary": "primary_delta_release_speed",
         "Δ HB vs Primary": "primary_delta_pfx_x",
         "Δ iVB vs Primary": "primary_delta_pfx_z",
@@ -854,84 +861,178 @@ with tab_lb:
     page = st.number_input("Page", min_value=1, value=1, step=1)
     min_pitch_for_pitchcol = 10
 
-    # Build pitcher-year leaderboard from df_scored (FanGraphs style):
-    # Overall Stuff+ first, then Stuff+ by pitch as columns
-    d = df_scored.copy()
-    d = d[d["PlayerName"].notna() & d["pitch_type"].notna()].copy()
+    # -----------------------------
+    # Build leaderboard from pitcher_history (single source of truth)
+    # This matches the profile page exactly.
+    # -----------------------------
 
-    # Pitch-level aggregates
-    g = (
-        d.groupby(["PlayerName", "pitch_type"], as_index=False)
-         .agg(
-             Pitches=("pitch_type", "size"),
-             StuffPlus=("Stuff+_pt", "mean"),
-         )
-         .rename(columns={"pitch_type": "Pitch"})
-    )
+    # --- Fix 2: arsenal filter + IP filter controls ---
+    lb_controls1, lb_controls2, lb_controls3 = st.columns([1, 1, 1])
 
-    # Usage per pitch (within pitcher-season)
+    with lb_controls1:
+        min_ip = st.number_input(
+            "Min IP",
+            min_value=0,
+            max_value=300,
+            value=30,
+            step=5,
+            help="Minimum innings pitched for the selected season"
+        )
+
+    with lb_controls2:
+        min_pitch_for_pitchcol = st.number_input(
+            "Min pitches (per pitch type)",
+            min_value=1,
+            max_value=200,
+            value=100,
+            step=10,
+            help="Minimum pitches thrown for a pitch-type column to appear"
+        )
+
+    # ph_year = pitcher_history filtered to selected season
+    ph_year = pitcher_history[
+        pitcher_history["game_year"] == year
+    ].copy()
+
+    # --- Fix 3: IP filter ---
+    # IP comes from df_scored which has it merged from FanGraphs in the notebook.
+    # Pull it from df_scored directly (one row per pitcher).
+    if "IP" in df_scored.columns:
+        ip_lookup = (
+            df_scored[["PlayerName", "IP"]]
+            .dropna(subset=["PlayerName", "IP"])
+            .drop_duplicates(subset=["PlayerName"])
+            .copy()
+        )
+        ph_year = ph_year.merge(ip_lookup, on="PlayerName", how="left")
+        ph_year = ph_year[
+            pd.to_numeric(ph_year["IP"], errors="coerce").fillna(0) >= min_ip
+        ].copy()
+    else:
+        # IP not in parquet — fall back to pitch count filter
+        pitcher_pitch_totals = (
+            ph_year.groupby("PlayerName")["Pitches"].sum().reset_index()
+        )
+        eligible_pitchers = pitcher_pitch_totals[
+            pitcher_pitch_totals["Pitches"] >= min_ip * 15  # rough proxy
+        ]["PlayerName"]
+        ph_year = ph_year[ph_year["PlayerName"].isin(eligible_pitchers)].copy()
+
+    # --- Fix 1: Overall Stuff+ from pitcher_history (arsenal pitches only) ---
+    # Filter to arsenal pitches using same thresholds as profile page
+    ph_arsenal = ph_year[ph_year["Pitches"] >= 100].copy()
+
+    # Compute total pitches per pitcher (across arsenal pitches only)
     pitcher_totals = (
-        g.groupby("PlayerName", as_index=False)["Pitches"]
-         .sum()
-         .rename(columns={"Pitches": "Pitches_total"})
+        ph_arsenal.groupby("PlayerName")["Pitches"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Pitches": "Pitches_total"})
     )
-    g = g.merge(pitcher_totals, on="PlayerName", how="left")
-    g["Usage %"] = g["Pitches"] / g["Pitches_total"]
+    ph_arsenal = ph_arsenal.merge(pitcher_totals, on="PlayerName", how="left")
+    ph_arsenal["Usage"] = ph_arsenal["Pitches"] / ph_arsenal["Pitches_total"]
 
-    # Weighted overall Stuff+ per pitcher (weighted by pitch counts)
+    # Weighted overall Stuff+ — usage-weighted to match profile page
     overall = (
-        g.groupby("PlayerName", as_index=False)
-         .apply(lambda x: pd.Series({
-             "Overall": np.average(x["StuffPlus"], weights=x["Pitches"]) if x["Pitches"].sum() > 0 else np.nan,
-             "Pitches": int(x["Pitches"].sum()),
-         }))
-         .reset_index(drop=True)
+        ph_arsenal.groupby("PlayerName", as_index=False)
+        .apply(lambda x: pd.Series({
+            "Overall": (
+                (x["StuffPlus"] * x["Usage"]).sum() / x["Usage"].sum()
+                if x["Usage"].sum() > 0 else np.nan
+            ),
+            "Pitches": int(ph_year[ph_year["PlayerName"] == x.name]["Pitches"].sum())
+            if x.name in ph_year["PlayerName"].values else 0,
+        }))
+        .reset_index(drop=True)
     )
 
-    # Wide pivot for Stuff+ by pitch (only show pitch Stuff+ if enough pitches)
-    g_pitch = g.copy()
-    g_pitch.loc[g_pitch["Pitches"] < min_pitch_for_pitchcol, "StuffPlus"] = np.nan
+    # Add IP column if available
+    if "IP" in ph_year.columns:
+        ip_col = (
+            ph_year[["PlayerName", "IP"]]
+            .drop_duplicates(subset=["PlayerName"])
+        )
+        overall = overall.merge(ip_col, on="PlayerName", how="left")
 
-    wide = g_pitch.pivot(index="PlayerName", columns="Pitch", values="StuffPlus")
+    # Wide pivot for per-pitch Stuff+ columns
+    # Only show a pitch column if pitcher threw >= min_pitch_for_pitchcol
+    g_pitch = ph_year.copy()
+    g_pitch.loc[
+        g_pitch["Pitches"] < min_pitch_for_pitchcol, "StuffPlus"
+    ] = np.nan
+    g_pitch = g_pitch.rename(columns={"pitch_type": "Pitch"})
 
-    pitch_cols_sorted = [p for p in PITCH_ORDER if p in wide.columns] + sorted(
-        [c for c in wide.columns if c not in PITCH_ORDER]
+    wide = g_pitch.pivot_table(
+        index="PlayerName",
+        columns="Pitch",
+        values="StuffPlus",
+        aggfunc="mean"
+    )
+
+    pitch_cols_sorted = (
+        [p for p in PITCH_ORDER if p in wide.columns]
+        + sorted([c for c in wide.columns if c not in PITCH_ORDER])
     )
     wide = wide.reindex(columns=pitch_cols_sorted)
 
-    # Combine
+    # Combine overall + per-pitch columns
     lb = overall.merge(wide, left_on="PlayerName", right_index=True, how="left")
 
-    # Round Stuff+ columns to nearest int (including pitch columns)
+    # Round all Stuff+ columns
     stuff_cols = ["Overall"] + pitch_cols_sorted
     for c in stuff_cols:
         if c in lb.columns:
             lb[c] = pd.to_numeric(lb[c], errors="coerce").round(0)
 
-    # Sort by overall Stuff+ (desc), then Pitches (desc)
+    # Sort
     lb = lb.sort_values(["Overall", "Pitches"], ascending=[False, False])
 
-    # Order columns: overall Stuff+ up front, then pitch columns
-    show_cols = ["PlayerName", "Overall", "Pitches"] + pitch_cols_sorted
+    # Columns to show — include IP if available
+    show_cols = ["PlayerName", "Overall", "Pitches"]
+    if "IP" in lb.columns:
+        lb["IP"] = pd.to_numeric(lb["IP"], errors="coerce").round(1)
+        show_cols.append("IP")
+    show_cols += pitch_cols_sorted
 
-    # Pagination
+    # --- Pagination ---
     total_rows = len(lb)
     total_pages = max(1, int(np.ceil(total_rows / page_size)))
+
+    # Prev / Next buttons instead of number input
+    lb_page_key = "lb_page"
+    if lb_page_key not in st.session_state:
+        st.session_state[lb_page_key] = 1
+
+    page = st.session_state[lb_page_key]
     if page > total_pages:
-        page = total_pages
+        st.session_state[lb_page_key] = 1
+        page = 1
+
+    col_prev, col_page_info, col_next = st.columns([1, 4, 1])
+    with col_prev:
+        if st.button("← Prev", disabled=(page <= 1)):
+            st.session_state[lb_page_key] = page - 1
+            st.rerun()
+    with col_page_info:
+        start = (page - 1) * page_size
+        end = min(start + page_size, total_rows)
+        st.caption(
+            f"Showing {start+1}–{end} of {total_rows} "
+            f"(Page {page} of {total_pages})"
+        )
+    with col_next:
+        if st.button("Next →", disabled=(page >= total_pages)):
+            st.session_state[lb_page_key] = page + 1
+            st.rerun()
 
     start = (page - 1) * page_size
     end = start + page_size
 
-    st.caption(f"Showing rows {start+1}–{min(end, total_rows)} of {total_rows} (Page {page} of {total_pages})")
-
     display_lb = lb[show_cols].iloc[start:end].reset_index(drop=True).copy()
-
-    # Make missing values display as blank instead of None
     display_lb = display_lb.replace({None: np.nan})
 
     for c in display_lb.columns:
-        if c != "PlayerName":
+        if c not in ("PlayerName", "IP"):
             display_lb[c] = (
                 pd.to_numeric(display_lb[c], errors="coerce")
                 .map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
@@ -942,26 +1043,49 @@ with tab_lb:
         use_container_width=True,
         hide_index=True,
     )
-
     st.divider()
 
     st.subheader("Pitch Usage")
 
-    # Wide usage table: columns = pitch types only
-    wide_u = g.pivot(index="PlayerName", columns="Pitch", values="Usage %")
+    # Build usage from pitcher_history (same source as leaderboard)
+    ph_usage = ph_year.copy().rename(columns={"pitch_type": "Pitch"})
+    pitcher_totals_u = (
+        ph_usage.groupby("PlayerName")["Pitches"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Pitches": "Pitches_total"})
+    )
+    ph_usage = ph_usage.merge(pitcher_totals_u, on="PlayerName", how="left")
+    ph_usage["Usage %"] = ph_usage["Pitches"] / ph_usage["Pitches_total"]
+
+    wide_u = ph_usage.pivot_table(
+        index="PlayerName",
+        columns="Pitch",
+        values="Usage %",
+        aggfunc="mean"
+    )
     wide_u = wide_u.rename(columns=lambda c: f"{c} %")
 
-    # Combine Pitches + usage columns
-    usage_lb = overall[["PlayerName", "Pitches"]].merge(wide_u, left_on="PlayerName", right_index=True, how="left")
+    pitcher_totals_u2 = (
+        ph_usage.groupby("PlayerName")["Pitches"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Pitches": "Pitches_total"})
+    )
 
-    # Sort by Pitches decreasing
+    usage_lb = pitcher_totals_u2.merge(
+        wide_u, left_on="PlayerName", right_index=True, how="left"
+    ).rename(columns={"Pitches_total": "Pitches"})
+
     usage_lb = usage_lb.sort_values("Pitches", ascending=False)
 
-    # Format percentages like 69.7%
     usage_disp = usage_lb.copy()
-    pitch_cols = sorted([c for c in usage_disp.columns if c not in ("PlayerName", "Pitches")])
+    pitch_cols_u = sorted([
+        c for c in usage_disp.columns
+        if c not in ("PlayerName", "Pitches")
+    ])
 
-    for c in pitch_cols:
+    for c in pitch_cols_u:
         usage_disp[c] = (
             pd.to_numeric(usage_disp[c], errors="coerce")
             .mul(100)
@@ -969,18 +1093,15 @@ with tab_lb:
             .map(lambda x: f"{x:.1f}%" if pd.notna(x) else "")
         )
 
-    # Apply pagination (same page/page_size as leaderboard)
+    # Pagination — shares lb_page state with leaderboard
     total_rows_u = len(usage_disp)
-    total_pages_u = max(1, int(np.ceil(total_rows_u / page_size)))
-    if page > total_pages_u:
-        page = total_pages_u
-
     start = (page - 1) * page_size
-    end = start + page_size
+    end = min(start + page_size, total_rows_u)
 
-    # Display
     st.dataframe(
-        usage_disp[["PlayerName", "Pitches"] + pitch_cols].iloc[start:end].reset_index(drop=True),
+        usage_disp[["PlayerName", "Pitches"] + pitch_cols_u]
+        .iloc[start:end]
+        .reset_index(drop=True),
         use_container_width=True,
         hide_index=True,
     )
