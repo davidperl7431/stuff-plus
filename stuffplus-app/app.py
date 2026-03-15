@@ -12,7 +12,6 @@ st.set_page_config(page_title="Perl Stuff+", layout="wide")
 PITCHER_HISTORY_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/pitcher_history.parquet"
 
 DF_SCORED_YEAR_URLS = {
-    2022: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2022.parquet",
     2023: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2023.parquet",
     2024: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2024.parquet",
     2025: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2025.parquet",
@@ -858,15 +857,11 @@ with tab_lb:
 
     # Controls
     page_size = st.selectbox("Rows per page", [10, 25, 30, 50, 100, 200], index=2)
-    page = st.number_input("Page", min_value=1, value=1, step=1)
-    min_pitch_for_pitchcol = 10
 
     # -----------------------------
-    # Build leaderboard from pitcher_history (single source of truth)
-    # This matches the profile page exactly.
+    # Build leaderboard from pitcher_history
     # -----------------------------
 
-    # --- Fix 2: arsenal filter + IP filter controls ---
     lb_controls1, lb_controls2, lb_controls3 = st.columns([1, 1, 1])
 
     with lb_controls1:
@@ -894,31 +889,23 @@ with tab_lb:
         pitcher_history["game_year"] == year
     ].copy()
 
-    # --- Fix 3: IP filter ---
-    # IP comes from df_scored which has it merged from FanGraphs in the notebook.
-    # Pull it from df_scored directly (one row per pitcher).
-    if "IP" in df_scored.columns:
-        ip_lookup = (
-            df_scored[["PlayerName", "IP"]]
-            .dropna(subset=["PlayerName", "IP"])
-            .drop_duplicates(subset=["PlayerName"])
-            .copy()
-        )
-        ph_year = ph_year.merge(ip_lookup, on="PlayerName", how="left")
+    # --- IP filter ---
+    # IP is in pitcher_history directly
+    if "IP" in ph_year.columns:
         ph_year = ph_year[
             pd.to_numeric(ph_year["IP"], errors="coerce").fillna(0) >= min_ip
         ].copy()
     else:
-        # IP not in parquet — fall back to pitch count filter
+        # fallback if pitcher_history predates IP being added
         pitcher_pitch_totals = (
             ph_year.groupby("PlayerName")["Pitches"].sum().reset_index()
         )
         eligible_pitchers = pitcher_pitch_totals[
-            pitcher_pitch_totals["Pitches"] >= min_ip * 15  # rough proxy
+            pitcher_pitch_totals["Pitches"] >= min_ip * 15
         ]["PlayerName"]
         ph_year = ph_year[ph_year["PlayerName"].isin(eligible_pitchers)].copy()
 
-    # --- Fix 1: Overall Stuff+ from pitcher_history (arsenal pitches only) ---
+    # Overall Stuff+ from pitcher_history (arsenal pitches only)
     # Filter to arsenal pitches using same thresholds as profile page
     ph_arsenal = ph_year[ph_year["Pitches"] >= 100].copy()
 
