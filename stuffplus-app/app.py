@@ -507,7 +507,7 @@ with tab_profile:
                     type="line",
                     x0=x_val, x1=x_val,
                     y0=-25, y1=25,
-                    line=dict(dash="dot", color="rgba(255,255,255,0.3)", width=1)
+                    line=dict(color="rgba(255,255,255,0.3)", width=1)
                 )
 
             # Arm-angle reference line
@@ -722,8 +722,6 @@ with tab_profile:
                     use_container_width=True,
                     hide_index=True,
                 )
-        
-    st.divider()
 
 # -----------------------------
 # LEADERBOARD TAB (with pagination)
@@ -970,8 +968,6 @@ with tab_lb:
     )
 
     st.caption("Usage values are percentages within each pitcher-season.")
-    
-st.divider()
 
 def get_numeric_slider_bounds(series):
     s = pd.to_numeric(series, errors="coerce").dropna()
