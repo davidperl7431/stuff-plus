@@ -171,7 +171,7 @@ def build_pitch_finder_table(df, min_pitches=25):
     })
 
     return g[[
-        "Year", "Pitcher", "Handedness", "Pitch", "Pitches", "Usage %",
+        "Pitcher", "Handedness", "Pitch", "Pitches", "Usage %",
         "Stuff+", "Velo", "iVB", "HB", "Arm Angle", "Extension",
         "Spin", "Spin Axis", "Spin Eff.", "SSW", "SSW_X", "SSW_Z"
     ]]
@@ -266,6 +266,11 @@ with top2:
         index=0,
         key="season_select",
     )
+
+# Reset leaderboard page when season changes
+if st.session_state.get("last_year") != year:
+    st.session_state["lb_page"] = 1
+    st.session_state["last_year"] = year
 
 df_scored = load_df_scored_year(year)
 min_pitches_by_type = 25
@@ -711,143 +716,6 @@ with tab_profile:
                 )
         
     st.divider()
-
-    # -----------------------------
-    # Stuff+ scatter: selectable axes, colored by Stuff+
-    # -----------------------------
-    st.subheader("Stuff+")
-
-    axis_candidates = {
-        "HB": "HB",
-        "iVB": "iVB",
-        "Velo": "release_speed",
-        "Spin": "release_spin_rate",
-        "Extension": "release_extension",
-        "Release X": "release_pos_x",
-        "Release Z": "release_pos_z",
-        "Spin Axis X": "spin_axis_x",
-        "Spin Axis Y": "spin_axis_y",
-        "Spin Efficiency": "spin_efficiency",
-        "SSW (magnitude)": "ssw_in",
-        "SSW X": "ssw_x",       # new — signed horizontal SSW
-        "SSW Z": "ssw_z",       # new — signed vertical SSW
-        "Δ Velo vs Primary": "primary_delta_release_speed",
-        "Δ HB vs Primary": "primary_delta_pfx_x",
-        "Δ iVB vs Primary": "primary_delta_pfx_z",
-    }
-
-    c1, c2, c3 = st.columns([1.0, 1.0, 1.6])
-
-    with c1:
-        x_label = st.selectbox(
-            "X axis",
-            list(axis_candidates.keys()),
-            index=list(axis_candidates.keys()).index("HB")
-        )
-    with c2:
-        y_label = st.selectbox(
-            "Y axis",
-            list(axis_candidates.keys()),
-            index=list(axis_candidates.keys()).index("iVB")
-        )
-    with c3:
-        pitch_filter = st.multiselect(
-            "Pitch types",
-            sorted(dfp["pitch_type"].dropna().unique().tolist()),
-            default=sorted(dfp["pitch_type"].dropna().unique().tolist()),
-        )
-        
-    color_col = "Stuff+_pt"
-
-    plot_df = dfp[dfp["pitch_type"].isin(pitch_filter)].copy()
-
-    if color_col not in plot_df.columns:
-        st.info("Stuff+_pt is not available for this plot.")
-        st.stop()
-
-    xcol = axis_candidates[x_label]
-    ycol = axis_candidates[y_label]
-
-    for col in [xcol, ycol, color_col]:
-        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
-
-    plot_df = plot_df.dropna(subset=[xcol, ycol, color_col])
-
-    # Apply jitter to discretized columns to avoid vertical/horizontal striping
-    JITTER_COLS = {"release_pos_x", "release_pos_z", "spin_axis_x", "spin_axis_y"}
-
-    rng = np.random.default_rng(42)
-
-    plot_df_plot = plot_df.copy()
-
-    if xcol in JITTER_COLS:
-        plot_df_plot[xcol] = plot_df_plot[xcol] + rng.uniform(-0.015, 0.015, len(plot_df_plot))
-
-    if ycol in JITTER_COLS:
-        plot_df_plot[ycol] = plot_df_plot[ycol] + rng.uniform(-0.015, 0.015, len(plot_df_plot))
-
-    if len(plot_df) == 0:
-        st.info("No data after filters for the scatter plot.")
-    else:
-        x_title = "1B \u2194 3B" if x_label == "HB" else x_label
-        y_title = y_label
-
-        fig2 = px.scatter(
-            plot_df_plot,
-            x=xcol,
-            y=ycol,
-            color=color_col,
-            color_continuous_scale="RdYlBu_r",
-            color_continuous_midpoint=100,
-            hover_data=["pitch_type"],
-            labels={xcol: x_title, ycol: y_title, "pitch_type": "Pitch"},
-            range_color=[80, 120],
-        )
-        
-        fig2.update_layout(coloraxis_showscale=False)
-
-        if x_label == "HB":
-            fig2.update_xaxes(range=[-25, 25], zeroline=False)
-        else:
-            fig2.update_xaxes(zeroline=False)
-
-        if y_label == "iVB":
-            fig2.update_yaxes(range=[-25, 25], zeroline=False)
-        else:
-            fig2.update_yaxes(zeroline=False)
-
-        if x_label == "HB":
-            fig2.add_shape(
-                type="line",
-                x0=0, x1=0,
-                y0=-25 if y_label == "iVB" else float(plot_df[ycol].min()),
-                y1=25 if y_label == "iVB" else float(plot_df[ycol].max()),
-                line=dict(dash="dot", color="white", width=2)
-            )
-
-        if y_label == "iVB":
-            fig2.add_shape(
-                type="line",
-                x0=-25 if x_label == "HB" else float(plot_df[xcol].min()),
-                x1=25 if x_label == "HB" else float(plot_df[xcol].max()),
-                y0=0, y1=0,
-                line=dict(dash="dot", color="white", width=2)
-            )
-
-        fig2.update_layout(
-            height=550,
-            margin=dict(l=10, r=10, t=30, b=10),
-            dragmode=False
-        )
-
-        st.plotly_chart(
-            fig2,
-            use_container_width=True,
-            config={
-                "staticPlot": True,
-                "displayModeBar": False,
-            },
-        )
 
 # -----------------------------
 # LEADERBOARD TAB (with pagination)
