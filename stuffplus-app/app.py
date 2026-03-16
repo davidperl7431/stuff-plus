@@ -59,10 +59,23 @@ def add_arm_angle_line(fig, theta_deg, *, is_lefty: bool, xlim=(-25, 25), ylim=(
 
     fig.add_shape(
         type="line",
-        x0=dx * t0, y0=dy * t0,
-        x1=dx * t1, y1=dy * t1,
-        line=dict(dash="dot", color="white", width=2),
+        x0=0, x1=0,
+        y0=-25, y1=25,
+        line=dict(dash="dot", color="white", width=2)
     )
+    fig.add_shape(
+        type="line",
+        x0=-25, x1=25,
+        y0=0, y1=0,
+        line=dict(dash="dot", color="white", width=2)
+    )
+    for x_val in [-20, -10, 10, 20]:
+        fig.add_shape(
+            type="line",
+            x0=x_val, x1=x_val,
+            y0=-25, y1=25,
+            line=dict(dash="dot", color="rgba(255,255,255,0.3)", width=1)
+        )
 
 def build_usage_splits(player_df, pitch_order, pitch_type_col="pitch_type", min_pitches=25):
 
