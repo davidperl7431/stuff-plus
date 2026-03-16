@@ -743,8 +743,8 @@ with tab_lb:
             "Min IP",
             min_value=0,
             max_value=300,
-            value=30,
-            step=5,
+            value=162,
+            step=1,
             help="Minimum innings pitched for the selected season"
         )
 
@@ -753,7 +753,7 @@ with tab_lb:
             "Min pitches (per pitch type)",
             min_value=1,
             max_value=200,
-            value=100,
+            value=10,
             step=10,
             help="Minimum pitches thrown for a pitch-type column to appear"
         )
