@@ -510,6 +510,27 @@ with tab_profile:
                     line=dict(color="rgba(255,255,255,0.3)", width=1)
                 )
 
+            # Confidence ellipses — 1 SD around each pitch cluster
+            theta = np.linspace(0, 2 * np.pi, 100)
+            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+                subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
+                if len(subset) < 10:
+                    continue
+                hb_mean = subset["HB"].mean()
+                ivb_mean = subset["iVB"].mean()
+                hb_std = subset["HB"].std()
+                ivb_std = subset["iVB"].std()
+                x = hb_mean + hb_std * np.cos(theta)
+                y = ivb_mean + ivb_std * np.sin(theta)
+                color = PITCH_COLORS.get(pitch, "white")
+                fig.add_scatter(
+                    x=x, y=y,
+                    mode="lines",
+                    line=dict(color=color, width=2),
+                    showlegend=False,
+                    hoverinfo="skip",
+                )
+
             # Arm-angle reference line
             if arm_angle is not None:
                 add_arm_angle_line(fig, arm_angle, is_lefty=is_lefty, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
