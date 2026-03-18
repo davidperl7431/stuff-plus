@@ -486,7 +486,7 @@ with tab_profile:
                 )
             )
 
-            fig.update_xaxes(range=[-25, 25], zeroline=False, autorange="reversed")
+            fig.update_xaxes(range=[25, -25], zeroline=False)
             fig.update_yaxes(range=[-25, 25], zeroline=False)
 
             fig.add_shape(
@@ -508,6 +508,27 @@ with tab_profile:
                     x0=x_val, x1=x_val,
                     y0=-25, y1=25,
                     line=dict(color="rgba(255,255,255,0.3)", width=1)
+                )
+
+            # Confidence ellipses — 1 SD around each pitch cluster
+            theta = np.linspace(0, 2 * np.pi, 100)
+            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+                subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
+                if len(subset) < 10:
+                    continue
+                hb_mean = subset["HB"].mean()
+                ivb_mean = subset["iVB"].mean()
+                hb_std = subset["HB"].std()
+                ivb_std = subset["iVB"].std()
+                x = hb_mean + hb_std * np.cos(theta)
+                y = ivb_mean + ivb_std * np.sin(theta)
+                color = PITCH_COLORS.get(pitch, "white")
+                fig.add_scatter(
+                    x=x, y=y,
+                    mode="lines",
+                    line=dict(color=color, width=2),
+                    showlegend=False,
+                    hoverinfo="skip",
                 )
                 
             # Arm-angle reference line
