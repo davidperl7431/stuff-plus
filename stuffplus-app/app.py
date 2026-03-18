@@ -486,7 +486,7 @@ with tab_profile:
                 )
             )
 
-            fig.update_xaxes(range=[25, -25], zeroline=False)
+            fig.update_xaxes(range=[-25, 25], zeroline=False)
             fig.update_yaxes(range=[-25, 25], zeroline=False)
 
             fig.add_shape(
