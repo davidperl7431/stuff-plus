@@ -470,8 +470,8 @@ with tab_profile:
                     x=x_ell, y=y_ell,
                     mode="lines",
                     fill="toself",
-                    fillcolor=f"rgba({r},{g_val},{b},0.15)",
-                    line=dict(color=f"rgba({r},{g_val},{b},0.6)", width=1.5),
+                    fillcolor=f"rgba({r},{g_val},{b},0.25)",
+                    line=dict(color=f"rgba({r},{g_val},{b},0.9)", width=2),
                     showlegend=False,
                     hoverinfo="skip",
                 ))
