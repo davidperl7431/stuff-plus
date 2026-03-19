@@ -442,7 +442,7 @@ with tab_profile:
         fig = go.Figure()
 
         # Sample up to 100 pitches per type for display (deterministic)
-        n_total = min(100, len(dfp))
+        n_total = min(200, len(dfp))
         dfp_sampled = dfp.sample(n_total, random_state=42)
 
         # Draw dots first
@@ -551,12 +551,13 @@ with tab_profile:
             )
 
         fig.update_layout(
-            height=450,
-            margin=dict(l=10, r=10, t=30, b=10),
-            dragmode=False,
-            xaxis_title="HB<br>1B ↔ 3B",
-            yaxis_title="iVB",
-        )
+                height=550,
+                margin=dict(l=10, r=10, t=30, b=10),
+                dragmode=False,
+                xaxis_title="Horizontal Break (in)<br>1B ↔ 3B",
+                yaxis_title="Induced Vertical Break (in)",
+                yaxis=dict(scaleanchor="x", scaleratio=1),
+            )
 
         st.plotly_chart(
             fig,
