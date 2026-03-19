@@ -442,10 +442,8 @@ with tab_profile:
             fig = go.Figure()
 
             # Sample up to 100 pitches per type for display (deterministic)
-            dfp_sampled = (
-                dfp.groupby("pitch_type", group_keys=False)
-                .apply(lambda x: x.sample(min(100, len(x)), random_state=42))
-            )
+            n_total = min(100, len(dfp))
+            dfp_sampled = dfp.sample(n_total, random_state=42)
 
             # Draw dots first
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
