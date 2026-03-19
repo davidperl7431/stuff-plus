@@ -470,8 +470,8 @@ with tab_profile:
                     y0=ivb_mean - 1.5 * ivb_std,
                     x1=hb_mean + 1.5 * hb_std,
                     y1=ivb_mean + 1.5 * ivb_std,
-                    line=dict(color=f"rgba({r},{g_val},{b},0.9)", width=2),
-                    fillcolor=f"rgba({r},{g_val},{b},0.15)",
+                    line=dict(color=f"rgba({r},{g_val},{b},1.0)", width=2.5),
+                    fillcolor=f"rgba({r},{g_val},{b},0.0)",
                     layer="above",
                 )
 
