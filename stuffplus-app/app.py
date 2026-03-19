@@ -435,7 +435,7 @@ with tab_profile:
         fig = go.Figure()
 
         # Sample up to 100 pitches per type for display (deterministic)
-        n_total = min(200, len(dfp))
+        n_total = min(100, len(dfp))
         dfp_sampled = dfp.sample(n_total, random_state=42)
 
         # Draw dots first
