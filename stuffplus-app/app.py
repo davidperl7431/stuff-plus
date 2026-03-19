@@ -402,11 +402,8 @@ with tab_profile:
         min_pitches=min_pitches_by_type
     )
     
-    # Layout: table + movement plot
-    left, right = st.columns([1.35, 1.0])
-
-    with left:
-        st.subheader("Overview")
+    # Overview table
+    st.subheader("Overview")
 
         overview_disp = ars_display[[
             "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
@@ -438,8 +435,7 @@ with tab_profile:
 
     arm_angle = float(dfp["arm_angle"].mean()) if dfp["arm_angle"].notna().any() else None
 
-    with right:
-        st.subheader("Movement")
+    st.subheader("Movement")
         if len(dfp) == 0:
             st.info("No pitches available.")
         else:
@@ -557,7 +553,9 @@ with tab_profile:
             fig.update_layout(
                 height=450,
                 margin=dict(l=10, r=10, t=30, b=10),
-                dragmode=False
+                dragmode=False,
+                xaxis_title="HB<br>1B ↔ 3B",
+                yaxis_title="iVB",
             )
 
             st.plotly_chart(
