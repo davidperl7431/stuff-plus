@@ -623,7 +623,7 @@ with tab_profile:
             .apply(lambda x: pd.Series({
                 "Overall": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
                 if x["Pitches"].sum() > 0 else np.nan
-            }))
+            }), include_groups=False)
             .reset_index(drop=True)
         )
 
@@ -652,6 +652,7 @@ with tab_profile:
         
         flat_cols = ["Year", "Overall Stuff+"] + [f"{p} {s}" for p in present_pitches for s in ["Usage", "Stuff+"]]
         
+        merged_df = pd.DataFrame(rows)
         merged_df = merged_df[flat_cols].copy()
         merged_df.columns = mi
         
