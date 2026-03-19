@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 import math
 
 st.set_page_config(page_title="Perl Stuff+", layout="wide")
@@ -510,7 +511,7 @@ with tab_profile:
                     line=dict(color="rgba(255,255,255,0.3)", width=1)
                 )
 
-            # Confidence ellipses — 1 SD around each pitch cluster
+            # Confidence ellipses — 1.5 SD, filled semi-transparent
             theta = np.linspace(0, 2 * np.pi, 100)
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
                 subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
@@ -520,16 +521,22 @@ with tab_profile:
                 ivb_mean = subset["iVB"].mean()
                 hb_std = subset["HB"].std()
                 ivb_std = subset["iVB"].std()
-                x = hb_mean + hb_std * np.cos(theta)
-                y = ivb_mean + ivb_std * np.sin(theta)
+                x = (hb_mean + 1.5 * hb_std * np.cos(theta)).tolist()
+                y = (ivb_mean + 1.5 * ivb_std * np.sin(theta)).tolist()
                 color = PITCH_COLORS.get(pitch, "white")
-                fig.add_scatter(
+                # convert hex to rgba for fill
+                r = int(color[1:3], 16)
+                g = int(color[3:5], 16)
+                b = int(color[5:7], 16)
+                fig.add_trace(go.Scatter(
                     x=x, y=y,
                     mode="lines",
-                    line=dict(color=color, width=2),
+                    fill="toself",
+                    fillcolor=f"rgba({r},{g},{b},0.15)",
+                    line=dict(color=f"rgba({r},{g},{b},0.6)", width=1.5),
                     showlegend=False,
                     hoverinfo="skip",
-                )
+                ))
                 
             # Arm-angle reference line
             if arm_angle is not None:
