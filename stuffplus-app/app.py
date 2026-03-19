@@ -533,6 +533,7 @@ with tab_profile:
                 
             # Arm-angle reference line
             if arm_angle is not None:
+                st.write(f"DEBUG: is_lefty={is_lefty}, arm_angle={arm_angle:.1f}")
                 add_arm_angle_line(fig, arm_angle, is_lefty=is_lefty, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
                 fig.add_annotation(
                     x=24,
