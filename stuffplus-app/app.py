@@ -304,10 +304,6 @@ with tab_profile:
             if row["Pitches"].sum() > 0 else np.nan
         )
 
-        primary_idx = row["Pitches"].idxmax()
-        primary_pitch = row.loc[primary_idx, "pitch_type"] if "pitch_type" in row.columns else None
-        primary_pitch_usage = row.loc[primary_idx, "Pitches"] / n_total if n_total > 0 else np.nan
-
         p_throws = dfp["p_throws"].iloc[0] if "p_throws" in dfp.columns and len(dfp) > 0 else "R"
         handedness = "LHP" if p_throws == "L" else "RHP"
 
@@ -320,16 +316,13 @@ with tab_profile:
             st.metric("Handedness", handedness)
 
         with c3:
-            st.metric(f"{year} Pitches", f"{n_total}")
+            st.metric("Pitches", f"{n_total}")
 
         with c4:
             st.metric(
                 "Overall Stuff+",
                 f"{overall_stuff:.0f}" if pd.notna(overall_stuff) else "NA"
             )
-
-        if pd.notna(primary_pitch) and pd.notna(primary_pitch_usage):
-            st.caption(f"Primary pitch: {primary_pitch} ({primary_pitch_usage:.0%})")
 
     st.divider()
     
