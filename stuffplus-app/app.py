@@ -644,15 +644,23 @@ with tab_profile:
                 row_data[f"{pitch} Stuff+"] = f"{s:.0f}" if pd.notna(s) else ""
             rows.append(row_data)
 
-        merged_df = pd.DataFrame(rows)
-
-        # Build multi-level columns for display
-        col_order = ["Year", "Overall Stuff+"]
-        for pitch in present_pitches:
-            col_order += [f"{pitch} Usage", f"{pitch} Stuff+"]
-
+        # Build multi-index columns
+        arrays = [[""] * 2 + sum([[pitch, pitch] for pitch in present_pitches], []),
+                  ["Year", "Overall Stuff+"] + sum([["Usage %", "Stuff+"] for _ in present_pitches], [])]
+        
+        mi = pd.MultiIndex.from_arrays(arrays)
+        
+        flat_cols = ["Year", "Overall Stuff+"] + [f"{p} {s}" for p in present_pitches for s in ["Usage", "Stuff+"]]
+        
+        # rename to match actual column names built earlier
+        col_rename = {f"{p} Usage": f"{p} Usage" for p in present_pitches}
+        col_rename.update({f"{p} Stuff+": f"{p} Stuff+" for p in present_pitches})
+        
+        merged_df = merged_df[flat_cols].copy()
+        merged_df.columns = mi
+        
         st.dataframe(
-            merged_df[col_order],
+            merged_df,
             use_container_width=True,
             hide_index=True,
         )
