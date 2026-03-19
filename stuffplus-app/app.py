@@ -450,30 +450,33 @@ with tab_profile:
         else:
             fig = go.Figure()
 
-            # Draw ellipses after dots using add_shape with layer="above"
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
                 subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
                 if len(subset) < 10:
                     continue
+                cov = np.cov(subset["HB"], subset["iVB"])
+                eigenvalues, eigenvectors = np.linalg.eigh(cov)
+                angle = np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
+                a = 1.5 * np.sqrt(eigenvalues[1])  # semi-major axis
+                b = 1.5 * np.sqrt(eigenvalues[0])  # semi-minor axis
                 hb_mean = subset["HB"].mean()
                 ivb_mean = subset["iVB"].mean()
-                hb_std = subset["HB"].std()
-                ivb_std = subset["iVB"].std()
+                t = np.linspace(0, 2 * np.pi, 100)
+                x_ell = hb_mean + a * np.cos(t) * np.cos(angle) - b * np.sin(t) * np.sin(angle)
+                y_ell = ivb_mean + a * np.cos(t) * np.sin(angle) + b * np.sin(t) * np.cos(angle)
                 color = PITCH_COLORS.get(pitch, "white")
                 r = int(color[1:3], 16)
                 g_val = int(color[3:5], 16)
-                b = int(color[5:7], 16)
-                fig.add_shape(
-                    type="circle",
-                    xref="x", yref="y",
-                    x0=hb_mean - 1.5 * hb_std,
-                    y0=ivb_mean - 1.5 * ivb_std,
-                    x1=hb_mean + 1.5 * hb_std,
-                    y1=ivb_mean + 1.5 * ivb_std,
-                    line=dict(color=f"rgba({r},{g_val},{b},1.0)", width=2.5),
-                    fillcolor=f"rgba({r},{g_val},{b},0.0)",
-                    layer="above",
-                )
+                b_val = int(color[5:7], 16)
+                fig.add_trace(go.Scatter(
+                    x=x_ell.tolist(), y=y_ell.tolist(),
+                    mode="lines",
+                    fill="toself",
+                    fillcolor=f"rgba({r},{g_val},{b_val},0.15)",
+                    line=dict(color=f"rgba({r},{g_val},{b_val},1.0)", width=2),
+                    showlegend=False,
+                    hoverinfo="skip",
+                ))
 
             # Draw dots on top of ellipses
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
