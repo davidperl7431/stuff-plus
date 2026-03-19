@@ -547,8 +547,8 @@ with tab_profile:
                 height=550,
                 margin=dict(l=10, r=10, t=30, b=10),
                 dragmode=False,
-                xaxis_title="Horizontal Break (in)<br>1B ↔ 3B",
-                yaxis_title="Induced Vertical Break (in)",
+                xaxis_title="HB (in)<br>1B ↔ 3B",
+                yaxis_title="iVB (in)",
             )
 
         st.plotly_chart(
