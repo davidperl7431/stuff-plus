@@ -405,33 +405,33 @@ with tab_profile:
     # Overview table
     st.subheader("Overview")
 
-        overview_disp = ars_display[[
-            "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
-        ]].copy()
+    overview_disp = ars_display[[
+        "Pitch", "Pitches", "Stuff+", "Velo", "iVB", "HB"
+    ]].copy()
 
-        # Force one decimal place
-        for col in ["Velo", "iVB", "HB"]:
-            overview_disp[col] = (
-                pd.to_numeric(overview_disp[col], errors="coerce")
-                .map(lambda x: f"{x:.1f}" if pd.notna(x) else "")
-            )
-        
-        if "pitch_type" in ars_display.columns:
-            overview_merged = ars_display.rename(columns={"pitch_type": "Pitch"})
-        else:
-            overview_merged = ars_display.copy()
-        
-        combined = overview_disp.merge(usage_splits, on="Pitch", how="left")
-        combined = combined[[
-            "Pitch", "Pitches", "Overall", "vs LHH", "vs RHH",
-            "Stuff+", "Velo", "iVB", "HB"
-        ]]
-
-        st.dataframe(
-            combined,
-            use_container_width=True,
-            hide_index=True,
+    # Force one decimal place
+    for col in ["Velo", "iVB", "HB"]:
+        overview_disp[col] = (
+            pd.to_numeric(overview_disp[col], errors="coerce")
+            .map(lambda x: f"{x:.1f}" if pd.notna(x) else "")
         )
+
+    if "pitch_type" in ars_display.columns:
+        overview_merged = ars_display.rename(columns={"pitch_type": "Pitch"})
+    else:
+        overview_merged = ars_display.copy()
+
+    combined = overview_disp.merge(usage_splits, on="Pitch", how="left")
+    combined = combined[[
+        "Pitch", "Pitches", "Overall", "vs LHH", "vs RHH",
+        "Stuff+", "Velo", "iVB", "HB"
+    ]]
+
+    st.dataframe(
+        combined,
+        use_container_width=True,
+        hide_index=True,
+    )
 
     arm_angle = float(dfp["arm_angle"].mean()) if dfp["arm_angle"].notna().any() else None
 
