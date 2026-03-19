@@ -450,6 +450,7 @@ with tab_profile:
         else:
             fig = go.Figure()
 
+            # Covariance ellipses — drawn after dots, outline only
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
                 subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
                 if len(subset) < 10:
@@ -457,8 +458,8 @@ with tab_profile:
                 cov = np.cov(subset["HB"], subset["iVB"])
                 eigenvalues, eigenvectors = np.linalg.eigh(cov)
                 angle = np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
-                a = 1.5 * np.sqrt(eigenvalues[1])  # semi-major axis
-                b = 1.5 * np.sqrt(eigenvalues[0])  # semi-minor axis
+                a = 1.5 * np.sqrt(eigenvalues[0])
+                b = 1.5 * np.sqrt(eigenvalues[1])
                 hb_mean = subset["HB"].mean()
                 ivb_mean = subset["iVB"].mean()
                 t = np.linspace(0, 2 * np.pi, 100)
@@ -471,9 +472,11 @@ with tab_profile:
                 fig.add_trace(go.Scatter(
                     x=x_ell.tolist(), y=y_ell.tolist(),
                     mode="lines",
-                    fill="toself",
-                    fillcolor=f"rgba({r},{g_val},{b_val},0.15)",
-                    line=dict(color=f"rgba({r},{g_val},{b_val},1.0)", width=2),
+                    line=dict(
+                        color=f"rgba({r},{g_val},{b_val},1.0)",
+                        width=2,
+                        dash="dot",
+                    ),
                     showlegend=False,
                     hoverinfo="skip",
                 ))
