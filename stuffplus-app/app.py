@@ -451,23 +451,27 @@ with tab_profile:
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
                 subset = dfp_sampled[dfp_sampled["pitch_type"] == pitch].copy()
                 color = PITCH_COLORS.get(pitch, "white")
-                
-                # build SVG path string for the rotated ellipse
-                path_pts = [f"M {x_ell[0]:.2f},{y_ell[0]:.2f}"]
-                for xi, yi in zip(x_ell[1:], y_ell[1:]):
-                    path_pts.append(f"L {xi:.2f},{yi:.2f}")
-                path_pts.append("Z")
-                path_str = " ".join(path_pts)
+                fig.add_trace(go.Scatter(
+                    x=subset["HB"],
+                    y=subset["iVB"],
+                    mode="markers",
+                    name=pitch,
+                    marker=dict(
+                        color=color,
+                        size=8,
+                        line=dict(width=0.5, color="black"),
+                        opacity=0.8,
+                    ),
+                    customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
+                    hovertemplate=(
+                        f"<b>{pitch}</b><br>"
+                        "Velo: %{customdata[0]:.1f}<br>"
+                        "Spin: %{customdata[1]:.0f}<br>"
+                        "Stuff+: %{customdata[2]:.1f}<extra></extra>"
+                    ),
+                ))
 
-                fig.add_shape(
-                    type="path",
-                    path=path_str,
-                    line=dict(color=f"rgba({r},{g_val},{b_val},1.0)", width=2, dash="dot"),
-                    fillcolor="rgba(0,0,0,0)",
-                    layer="above",
-                )
-
-            # Covariance ellipses — drawn after dots so they appear on top
+            # Covariance ellipses — drawn as shapes with layer="above" so they render on top
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
                 subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
                 if len(subset) < 10:
@@ -486,18 +490,19 @@ with tab_profile:
                 r = int(color[1:3], 16)
                 g_val = int(color[3:5], 16)
                 b_val = int(color[5:7], 16)
-                fig.add_trace(go.Scatter(
-                    x=x_ell.tolist(), y=y_ell.tolist(),
-                    mode="lines",
-                    line=dict(
-                        color=f"rgba({r},{g_val},{b_val},1.0)",
-                        width=2,
-                        dash="dot",
-                    ),
-                    showlegend=False,
-                    hoverinfo="skip",
-                ))
-
+                path_pts = [f"M {x_ell[0]:.2f},{y_ell[0]:.2f}"]
+                for xi, yi in zip(x_ell[1:], y_ell[1:]):
+                    path_pts.append(f"L {xi:.2f},{yi:.2f}")
+                path_pts.append("Z")
+                path_str = " ".join(path_pts)
+                fig.add_shape(
+                    type="path",
+                    path=path_str,
+                    line=dict(color=f"rgba({r},{g_val},{b_val},1.0)", width=2, dash="dot"),
+                    fillcolor="rgba(0,0,0,0)",
+                    layer="above",
+                )
+                
             fig.update_layout(
                 legend=dict(
                     orientation="h",
