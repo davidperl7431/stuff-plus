@@ -556,7 +556,6 @@ with tab_profile:
                 dragmode=False,
                 xaxis_title="Horizontal Break (in)<br>1B ↔ 3B",
                 yaxis_title="Induced Vertical Break (in)",
-                yaxis=dict(scaleanchor="x", scaleratio=1),
             )
 
         st.plotly_chart(
