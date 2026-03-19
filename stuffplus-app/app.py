@@ -652,10 +652,6 @@ with tab_profile:
         
         flat_cols = ["Year", "Overall Stuff+"] + [f"{p} {s}" for p in present_pitches for s in ["Usage", "Stuff+"]]
         
-        # rename to match actual column names built earlier
-        col_rename = {f"{p} Usage": f"{p} Usage" for p in present_pitches}
-        col_rename.update({f"{p} Stuff+": f"{p} Stuff+" for p in present_pitches})
-        
         merged_df = merged_df[flat_cols].copy()
         merged_df.columns = mi
         
