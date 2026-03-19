@@ -634,9 +634,6 @@ with tab_profile:
         with col2:
             st.subheader("Stuff+")
 
-            MIN_PITCHES_FOR_YEAR_PITCH = 25
-            hist_pitch = hist[hist["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
-
             # overall from all pitches
             overall_year = (
                 hist.groupby("game_year", as_index=False)
