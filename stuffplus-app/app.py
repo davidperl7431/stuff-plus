@@ -450,7 +450,37 @@ with tab_profile:
         else:
             fig = go.Figure()
 
-            # Covariance ellipses — drawn after dots, outline only
+            # Sample up to 100 pitches per type for display (deterministic)
+            dfp_sampled = (
+                dfp.groupby("pitch_type", group_keys=False)
+                .apply(lambda x: x.sample(min(100, len(x)), random_state=42))
+            )
+
+            # Draw dots first
+            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+                subset = dfp_sampled[dfp_sampled["pitch_type"] == pitch].copy()
+                color = PITCH_COLORS.get(pitch, "white")
+                fig.add_trace(go.Scatter(
+                    x=subset["HB"],
+                    y=subset["iVB"],
+                    mode="markers",
+                    name=pitch,
+                    marker=dict(
+                        color=color,
+                        size=8,
+                        line=dict(width=0.5, color="black"),
+                        opacity=0.8,
+                    ),
+                    customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
+                    hovertemplate=(
+                        f"<b>{pitch}</b><br>"
+                        "Velo: %{customdata[0]:.1f}<br>"
+                        "Spin: %{customdata[1]:.0f}<br>"
+                        "Stuff+: %{customdata[2]:.1f}<extra></extra>"
+                    ),
+                ))
+
+            # Covariance ellipses — drawn after dots so they appear on top
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
                 subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
                 if len(subset) < 10:
@@ -479,36 +509,6 @@ with tab_profile:
                     ),
                     showlegend=False,
                     hoverinfo="skip",
-                ))
-
-            # Sample up to 100 pitches per type for display (deterministic)
-            dfp_sampled = (
-                dfp.groupby("pitch_type", group_keys=False)
-                .apply(lambda x: x.sample(min(100, len(x)), random_state=42))
-            )
-
-            # Draw dots on top of ellipses
-            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
-                subset = dfp_sampled[dfp_sampled["pitch_type"] == pitch].copy()
-                color = PITCH_COLORS.get(pitch, "white")
-                fig.add_trace(go.Scatter(
-                    x=subset["HB"],
-                    y=subset["iVB"],
-                    mode="markers",
-                    name=pitch,
-                    marker=dict(
-                        color=color,
-                        size=8,
-                        line=dict(width=0.5, color="black"),
-                        opacity=0.8,
-                    ),
-                    customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
-                    hovertemplate=(
-                        f"<b>{pitch}</b><br>"
-                        "Velo: %{customdata[0]:.1f}<br>"
-                        "Spin: %{customdata[1]:.0f}<br>"
-                        "Stuff+: %{customdata[2]:.1f}<extra></extra>"
-                    ),
                 ))
 
             fig.update_layout(
