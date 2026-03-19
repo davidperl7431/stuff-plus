@@ -448,28 +448,58 @@ with tab_profile:
         if len(dfp) == 0:
             st.info("No pitches available.")
         else:
-            fig = px.scatter(
-                dfp,
-                x="HB",
-                y="iVB",
-                color="pitch_type",
-                color_discrete_map=PITCH_COLORS,
-                category_orders={"pitch_type": [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]},
-                opacity=0.80,
-                hover_data={
-                    "pitch_type": True,
-                    "release_speed": ':.1f',
-                    "release_spin_rate": ':.0f',
-                    "Stuff+_pt": ':.1f',
-                },
-                labels={
-                    "HB": "1B \u2194 3B",
-                    "iVB": "iVB",
-                },
-            )
-            
-            fig.update_layout(legend_title_text="")
-            
+            fig = go.Figure()
+
+            # Draw ellipses first so dots render on top
+            theta = np.linspace(0, 2 * np.pi, 100)
+            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+                subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
+                if len(subset) < 10:
+                    continue
+                hb_mean = subset["HB"].mean()
+                ivb_mean = subset["iVB"].mean()
+                hb_std = subset["HB"].std()
+                ivb_std = subset["iVB"].std()
+                x_ell = (hb_mean + 1.5 * hb_std * np.cos(theta)).tolist()
+                y_ell = (ivb_mean + 1.5 * ivb_std * np.sin(theta)).tolist()
+                color = PITCH_COLORS.get(pitch, "white")
+                r = int(color[1:3], 16)
+                g_val = int(color[3:5], 16)
+                b = int(color[5:7], 16)
+                fig.add_trace(go.Scatter(
+                    x=x_ell, y=y_ell,
+                    mode="lines",
+                    fill="toself",
+                    fillcolor=f"rgba({r},{g_val},{b},0.15)",
+                    line=dict(color=f"rgba({r},{g_val},{b},0.6)", width=1.5),
+                    showlegend=False,
+                    hoverinfo="skip",
+                ))
+
+            # Draw dots on top of ellipses
+            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+                subset = dfp[dfp["pitch_type"] == pitch].copy()
+                color = PITCH_COLORS.get(pitch, "white")
+                fig.add_trace(go.Scatter(
+                    x=subset["HB"],
+                    y=subset["iVB"],
+                    mode="markers",
+                    name=pitch,
+                    marker=dict(
+                        color=color,
+                        size=8,
+                        line=dict(width=0.5, color="black"),
+                        opacity=0.8,
+                    ),
+                    customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
+                    hovertemplate=(
+                        f"<b>{pitch}</b><br>"
+                        "Velo: %{customdata[0]:.1f}<br>"
+                        "Spin: %{customdata[1]:.0f}<br>"
+                        "Stuff+: %{customdata[2]:.1f}<extra></extra>"
+                    ),
+                ))
+
             fig.update_layout(
                 legend=dict(
                     orientation="h",
@@ -477,14 +507,8 @@ with tab_profile:
                     y=1.02,
                     xanchor="center",
                     x=0.5
-                )
-            )
-            
-            fig.update_traces(
-                marker=dict(
-                    size=8,
-                    line=dict(width=0.5, color="black")
-                )
+                ),
+                legend_title_text="",
             )
 
             fig.update_xaxes(range=[-25, 25], zeroline=False)
@@ -510,33 +534,6 @@ with tab_profile:
                     y0=-25, y1=25,
                     line=dict(color="rgba(255,255,255,0.3)", width=1)
                 )
-
-            # Confidence ellipses — 1.5 SD, filled semi-transparent
-            theta = np.linspace(0, 2 * np.pi, 100)
-            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
-                subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
-                if len(subset) < 10:
-                    continue
-                hb_mean = subset["HB"].mean()
-                ivb_mean = subset["iVB"].mean()
-                hb_std = subset["HB"].std()
-                ivb_std = subset["iVB"].std()
-                x = (hb_mean + 1.5 * hb_std * np.cos(theta)).tolist()
-                y = (ivb_mean + 1.5 * ivb_std * np.sin(theta)).tolist()
-                color = PITCH_COLORS.get(pitch, "white")
-                # convert hex to rgba for fill
-                r = int(color[1:3], 16)
-                g = int(color[3:5], 16)
-                b = int(color[5:7], 16)
-                fig.add_trace(go.Scatter(
-                    x=x, y=y,
-                    mode="lines",
-                    fill="toself",
-                    fillcolor=f"rgba({r},{g},{b},0.15)",
-                    line=dict(color=f"rgba({r},{g},{b},0.6)", width=1.5),
-                    showlegend=False,
-                    hoverinfo="skip",
-                ))
                 
             # Arm-angle reference line
             if arm_angle is not None:
