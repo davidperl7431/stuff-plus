@@ -436,138 +436,138 @@ with tab_profile:
     arm_angle = float(dfp["arm_angle"].mean()) if dfp["arm_angle"].notna().any() else None
 
     st.subheader("Movement")
-        if len(dfp) == 0:
-            st.info("No pitches available.")
-        else:
-            fig = go.Figure()
+    if len(dfp) == 0:
+        st.info("No pitches available.")
+    else:
+        fig = go.Figure()
 
-            # Sample up to 100 pitches per type for display (deterministic)
-            n_total = min(100, len(dfp))
-            dfp_sampled = dfp.sample(n_total, random_state=42)
+        # Sample up to 100 pitches per type for display (deterministic)
+        n_total = min(100, len(dfp))
+        dfp_sampled = dfp.sample(n_total, random_state=42)
 
-            # Draw dots first
-            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
-                subset = dfp_sampled[dfp_sampled["pitch_type"] == pitch].copy()
-                color = PITCH_COLORS.get(pitch, "white")
-                fig.add_trace(go.Scatter(
-                    x=subset["HB"],
-                    y=subset["iVB"],
-                    mode="markers",
-                    name=pitch,
-                    marker=dict(
-                        color=color,
-                        size=8,
-                        line=dict(width=0.5, color="black"),
-                        opacity=0.8,
-                    ),
-                    customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
-                    hovertemplate=(
-                        f"<b>{pitch}</b><br>"
-                        "Velo: %{customdata[0]:.1f}<br>"
-                        "Spin: %{customdata[1]:.0f}<br>"
-                        "Stuff+: %{customdata[2]:.1f}<extra></extra>"
-                    ),
-                ))
-
-            # Covariance ellipses — drawn as shapes with layer="above" so they render on top
-            for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
-                subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
-                if len(subset) < 10:
-                    continue
-                cov = np.cov(subset["HB"], subset["iVB"])
-                eigenvalues, eigenvectors = np.linalg.eigh(cov)
-                angle = np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
-                a = 1.5 * np.sqrt(eigenvalues[0])
-                b = 1.5 * np.sqrt(eigenvalues[1])
-                hb_mean = subset["HB"].mean()
-                ivb_mean = subset["iVB"].mean()
-                t = np.linspace(0, 2 * np.pi, 100)
-                x_ell = hb_mean + a * np.cos(t) * np.cos(angle) - b * np.sin(t) * np.sin(angle)
-                y_ell = ivb_mean + a * np.cos(t) * np.sin(angle) + b * np.sin(t) * np.cos(angle)
-                color = PITCH_COLORS.get(pitch, "white")
-                r = int(color[1:3], 16)
-                g_val = int(color[3:5], 16)
-                b_val = int(color[5:7], 16)
-                path_pts = [f"M {x_ell[0]:.2f},{y_ell[0]:.2f}"]
-                for xi, yi in zip(x_ell[1:], y_ell[1:]):
-                    path_pts.append(f"L {xi:.2f},{yi:.2f}")
-                path_pts.append("Z")
-                path_str = " ".join(path_pts)
-                fig.add_shape(
-                    type="path",
-                    path=path_str,
-                    line=dict(color=f"rgba({r},{g_val},{b_val},1.0)", width=2, dash="dot"),
-                    fillcolor="rgba(0,0,0,0)",
-                    layer="above",
-                )
-                
-            fig.update_layout(
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="center",
-                    x=0.5
+        # Draw dots first
+        for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+            subset = dfp_sampled[dfp_sampled["pitch_type"] == pitch].copy()
+            color = PITCH_COLORS.get(pitch, "white")
+            fig.add_trace(go.Scatter(
+                x=subset["HB"],
+                y=subset["iVB"],
+                mode="markers",
+                name=pitch,
+                marker=dict(
+                    color=color,
+                    size=8,
+                    line=dict(width=0.5, color="black"),
+                    opacity=0.8,
                 ),
-                legend_title_text="",
+                customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
+                hovertemplate=(
+                    f"<b>{pitch}</b><br>"
+                    "Velo: %{customdata[0]:.1f}<br>"
+                    "Spin: %{customdata[1]:.0f}<br>"
+                    "Stuff+: %{customdata[2]:.1f}<extra></extra>"
+                ),
+            ))
+
+        # Covariance ellipses — drawn as shapes with layer="above" so they render on top
+        for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
+            subset = dfp[dfp["pitch_type"] == pitch][["HB", "iVB"]].dropna()
+            if len(subset) < 10:
+                continue
+            cov = np.cov(subset["HB"], subset["iVB"])
+            eigenvalues, eigenvectors = np.linalg.eigh(cov)
+            angle = np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
+            a = 1.5 * np.sqrt(eigenvalues[0])
+            b = 1.5 * np.sqrt(eigenvalues[1])
+            hb_mean = subset["HB"].mean()
+            ivb_mean = subset["iVB"].mean()
+            t = np.linspace(0, 2 * np.pi, 100)
+            x_ell = hb_mean + a * np.cos(t) * np.cos(angle) - b * np.sin(t) * np.sin(angle)
+            y_ell = ivb_mean + a * np.cos(t) * np.sin(angle) + b * np.sin(t) * np.cos(angle)
+            color = PITCH_COLORS.get(pitch, "white")
+            r = int(color[1:3], 16)
+            g_val = int(color[3:5], 16)
+            b_val = int(color[5:7], 16)
+            path_pts = [f"M {x_ell[0]:.2f},{y_ell[0]:.2f}"]
+            for xi, yi in zip(x_ell[1:], y_ell[1:]):
+                path_pts.append(f"L {xi:.2f},{yi:.2f}")
+            path_pts.append("Z")
+            path_str = " ".join(path_pts)
+            fig.add_shape(
+                type="path",
+                path=path_str,
+                line=dict(color=f"rgba({r},{g_val},{b_val},1.0)", width=2, dash="dot"),
+                fillcolor="rgba(0,0,0,0)",
+                layer="above",
             )
 
-            fig.update_xaxes(range=[-25, 25], zeroline=False)
-            fig.update_yaxes(range=[-25, 25], zeroline=False)
+        fig.update_layout(
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5
+            ),
+            legend_title_text="",
+        )
 
+        fig.update_xaxes(range=[-25, 25], zeroline=False)
+        fig.update_yaxes(range=[-25, 25], zeroline=False)
+
+        fig.add_shape(
+            type="line",
+            x0=0, x1=0,
+            y0=-25, y1=25,
+            line=dict(dash="dot", color="white", width=2)
+        )
+        fig.add_shape(
+            type="line",
+            x0=-25, x1=25,
+            y0=0, y1=0,
+            line=dict(dash="dot", color="white", width=2)
+        )
+
+        for x_val in [-20, -10, 10, 20]:
             fig.add_shape(
                 type="line",
-                x0=0, x1=0,
+                x0=x_val, x1=x_val,
                 y0=-25, y1=25,
-                line=dict(dash="dot", color="white", width=2)
-            )
-            fig.add_shape(
-                type="line",
-                x0=-25, x1=25,
-                y0=0, y1=0,
-                line=dict(dash="dot", color="white", width=2)
-            )
-            
-            for x_val in [-20, -10, 10, 20]:
-                fig.add_shape(
-                    type="line",
-                    x0=x_val, x1=x_val,
-                    y0=-25, y1=25,
-                    line=dict(color="rgba(255,255,255,0.3)", width=1)
-                )
-                
-            # Arm-angle reference line
-            if arm_angle is not None:
-                add_arm_angle_line(fig, arm_angle, p_throws=p_throws, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
-                fig.add_annotation(
-                    x=-24 if p_throws == "L" else 24,
-                    y=-23,
-                    xanchor="left" if p_throws == "L" else "right",
-                    yanchor="bottom",
-                    text=f"Arm Angle: {arm_angle:.0f}°",
-                    showarrow=False,
-                    font=dict(color="white", size=12),
-                    bgcolor="rgba(0,0,0,0.35)"
-                )
-
-            fig.update_layout(
-                height=450,
-                margin=dict(l=10, r=10, t=30, b=10),
-                dragmode=False,
-                xaxis_title="HB<br>1B ↔ 3B",
-                yaxis_title="iVB",
+                line=dict(color="rgba(255,255,255,0.3)", width=1)
             )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={
-                    "displayModeBar": False,
-                    "scrollZoom": False,
-                    "doubleClick": False,
-                    "showTips": False,
-                },
+        # Arm-angle reference line
+        if arm_angle is not None:
+            add_arm_angle_line(fig, arm_angle, p_throws=p_throws, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
+            fig.add_annotation(
+                x=-24 if p_throws == "L" else 24,
+                y=-23,
+                xanchor="left" if p_throws == "L" else "right",
+                yanchor="bottom",
+                text=f"Arm Angle: {arm_angle:.0f}°",
+                showarrow=False,
+                font=dict(color="white", size=12),
+                bgcolor="rgba(0,0,0,0.35)"
             )
+
+        fig.update_layout(
+            height=450,
+            margin=dict(l=10, r=10, t=30, b=10),
+            dragmode=False,
+            xaxis_title="HB<br>1B ↔ 3B",
+            yaxis_title="iVB",
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "displayModeBar": False,
+                "scrollZoom": False,
+                "doubleClick": False,
+                "showTips": False,
+            },
+        )
 
     # -----------------------------
     # Historical tables (below Arsenal/Movement)
