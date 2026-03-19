@@ -533,15 +533,14 @@ with tab_profile:
                 
             # Arm-angle reference line
             if arm_angle is not None:
-                st.write(f"DEBUG: is_lefty={is_lefty}, arm_angle={arm_angle:.1f}")
                 add_arm_angle_line(fig, arm_angle, is_lefty=is_lefty, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
                 fig.add_annotation(
-                    x=24,
+                    x=-24 if is_lefty else 24,
                     y=-23,
+                    xanchor="left" if is_lefty else "right",
+                    yanchor="bottom",
                     text=f"Arm Angle: {arm_angle:.0f}°",
                     showarrow=False,
-                    xanchor="right",
-                    yanchor="bottom",
                     font=dict(color="white", size=12),
                     bgcolor="rgba(0,0,0,0.35)"
                 )
@@ -591,8 +590,6 @@ with tab_profile:
         # (1) Historical Arsenal
         with col1:
             st.subheader("Arsenal")
-
-            MIN_PITCHES_FOR_YEAR_PITCH = 25
             hist_pitch = hist[hist["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
 
             g = hist_pitch[["game_year", "pitch_type", "Pitches"]].copy().rename(columns={"pitch_type": "Pitch"})
