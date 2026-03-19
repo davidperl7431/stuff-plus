@@ -30,13 +30,13 @@ def load_df_scored_year(year):
     url = DF_SCORED_YEAR_URLS[int(year)]
     return pd.read_parquet(url)
 
-def add_arm_angle_line(fig, theta_deg, *, is_lefty: bool, xlim=(-25, 25), ylim=(-25, 25), origin_pad=2.0):
+def add_arm_angle_line(fig, theta_deg, *, p_throws: str, xlim=(-25, 25), ylim=(-25, 25), origin_pad=2.0):
     
     if theta_deg is None or not np.isfinite(theta_deg):
         return
 
     theta = float(theta_deg)
-    plot_theta = 180.0 - theta if is_lefty else theta
+    plot_theta = 180.0 - theta if p_throws == "L" else theta
     plot_theta = max(0.1, min(plot_theta, 179.9))
 
     rad = math.radians(plot_theta)
@@ -130,8 +130,8 @@ def build_pitch_finder_table(df, min_pitches=25):
         "SpinEff": ("spin_efficiency", "mean"),
     }
 
-    if "is_lefty" in d.columns:
-        agg_dict["is_lefty"] = ("is_lefty", "max")
+    if "p_throws" in d.columns:
+        agg_dict["p_throws"] = ("p_throws", "first")
 
     g = d.groupby(["game_year", "PlayerName", "pitch_type"], as_index=False).agg(**agg_dict)
 
@@ -146,8 +146,8 @@ def build_pitch_finder_table(df, min_pitches=25):
 
     g = g[g["Pitches"] >= min_pitches].copy()
 
-    if "is_lefty" in g.columns:
-        g["Handedness"] = np.where(g["is_lefty"] == 1, "LHP", "RHP")
+    if "p_throws" in g.columns:
+        g["Handedness"] = np.where(g["p_throws"] == "L", "LHP", "RHP")
     else:
         g["Handedness"] = "Unknown"
 
@@ -308,12 +308,8 @@ with tab_profile:
         primary_pitch = row.loc[primary_idx, "pitch_type"] if "pitch_type" in row.columns else None
         primary_pitch_usage = row.loc[primary_idx, "Pitches"] / n_total if n_total > 0 else np.nan
 
-        if "is_lefty" in dfp.columns and dfp["is_lefty"].notna().any():
-            is_lefty = int(dfp["is_lefty"].iloc[0]) == 1
-        else:
-            is_lefty = False
-
-        handedness = "LHP" if is_lefty else "RHP"
+        p_throws = dfp["p_throws"].iloc[0] if "p_throws" in dfp.columns and len(dfp) > 0 else "R"
+        handedness = "LHP" if p_throws == "L" else "RHP"
 
         c1, c2, c3, c4 = st.columns([2.2, 1.2, 1.2, 1.4])
 
@@ -338,13 +334,8 @@ with tab_profile:
     st.divider()
     
     # Determine handedness from pitch-level data
-    if "is_lefty" in dfp.columns and dfp["is_lefty"].notna().any():
-        raw_lefty = dfp["is_lefty"].iloc[0]
-    else:
-        raw_lefty = 0
-
-    is_lefty = int(raw_lefty) == 1
-    handedness = "LHP" if is_lefty else "RHP"
+    p_throws = dfp["p_throws"].iloc[0] if "p_throws" in dfp.columns and len(dfp) > 0 else "R"
+    handedness = "LHP" if p_throws == "L" else "RHP"
 
     dfp["HB"] = pd.to_numeric(dfp["HB_obs"], errors="coerce")
     dfp["iVB"] = pd.to_numeric(dfp["iVB_obs"], errors="coerce")
@@ -548,11 +539,11 @@ with tab_profile:
                 
             # Arm-angle reference line
             if arm_angle is not None:
-                add_arm_angle_line(fig, arm_angle, is_lefty=is_lefty, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
+                add_arm_angle_line(fig, arm_angle, p_throws=p_throws, xlim=(-25, 25), ylim=(-25, 25), origin_pad=0.8)
                 fig.add_annotation(
-                    x=-24 if is_lefty else 24,
+                    x=-24 if p_throws == "L" else 24,
                     y=-23,
-                    xanchor="left" if is_lefty else "right",
+                    xanchor="left" if p_throws == "L" else "right",
                     yanchor="bottom",
                     text=f"Arm Angle: {arm_angle:.0f}°",
                     showarrow=False,
@@ -570,8 +561,10 @@ with tab_profile:
                 fig,
                 use_container_width=True,
                 config={
-                    "staticPlot": True,
                     "displayModeBar": False,
+                    "scrollZoom": False,
+                    "doubleClick": False,
+                    "showTips": False,
                 },
             )
 
