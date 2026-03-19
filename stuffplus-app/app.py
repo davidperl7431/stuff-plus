@@ -418,16 +418,20 @@ with tab_profile:
                 pd.to_numeric(overview_disp[col], errors="coerce")
                 .map(lambda x: f"{x:.1f}" if pd.notna(x) else "")
             )
+        
+        if "pitch_type" in ars_display.columns:
+            overview_merged = ars_display.rename(columns={"pitch_type": "Pitch"})
+        else:
+            overview_merged = ars_display.copy()
+        
+        combined = overview_disp.merge(usage_splits, on="Pitch", how="left")
+        combined = combined[[
+            "Pitch", "Pitches", "Overall", "vs LHH", "vs RHH",
+            "Stuff+", "Velo", "iVB", "HB"
+        ]]
 
         st.dataframe(
-            overview_disp,
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        st.subheader("Usage Splits")
-        st.dataframe(
-            usage_splits,
+            combined,
             use_container_width=True,
             hide_index=True,
         )
