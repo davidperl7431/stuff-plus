@@ -592,89 +592,70 @@ with tab_profile:
     if len(hist) == 0:
         st.info("No historical pitch data available for this pitcher.")
     else:
-        col1, col2 = st.columns(2)
+        # -----------------------------
+        # Historical Arsenal & Stuff+ (merged)
+        # -----------------------------
+        st.subheader("Arsenal & Stuff+")
 
-        # (1) Historical Arsenal
-        with col1:
-            st.subheader("Arsenal")
-            hist_pitch = hist[hist["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
+        hist_pitch = hist[hist["Pitches"] >= MIN_PITCHES_FOR_YEAR_PITCH].copy()
 
-            g = hist_pitch[["game_year", "pitch_type", "Pitches"]].copy().rename(columns={"pitch_type": "Pitch"})
-            totals = (
-                hist.groupby("game_year", as_index=False)["Pitches"]
-                .sum()
-                .rename(columns={"Pitches": "Pitches_total"})
-            )
-            g = g.merge(totals, on="game_year", how="left")
-            g["Usage"] = g["Pitches"] / g["Pitches_total"]
+        # Usage per year
+        totals = (
+            hist.groupby("game_year", as_index=False)["Pitches"]
+            .sum()
+            .rename(columns={"Pitches": "Pitches_total"})
+        )
+        usage_df = hist_pitch.merge(totals, on="game_year", how="left")
+        usage_df["Usage"] = usage_df["Pitches"] / usage_df["Pitches_total"]
 
-            usage_wide = g.pivot(index="game_year", columns="Pitch", values="Usage").fillna(0.0)
-            usage_wide = usage_wide.sort_index(ascending=False)
+        usage_wide = usage_df.pivot(
+            index="game_year", columns="pitch_type", values="Usage"
+        ).fillna(0.0)
 
-            present_pitches = [p for p in PITCH_ORDER if p in usage_wide.columns]
-            usage_wide = usage_wide.reindex(columns=present_pitches)
-            usage_wide.columns = [f"{c} %" for c in usage_wide.columns]
+        # Stuff+ per year
+        stuff_wide = hist_pitch.pivot(
+            index="game_year", columns="pitch_type", values="StuffPlus"
+        )
 
-            usage_wide_display = usage_wide.copy()
-            for c in usage_wide_display.columns:
-                usage_wide_display[c] = (
-                    pd.to_numeric(usage_wide_display[c], errors="coerce")
-                    .mul(100)
-                    .round(1)
-                    .map(lambda x: f"{x:.1f}%" if pd.notna(x) else "")
-                )
+        # Overall Stuff+ per year (usage-weighted)
+        overall_year = (
+            hist.groupby("game_year", as_index=False)
+            .apply(lambda x: pd.Series({
+                "Overall": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
+                if x["Pitches"].sum() > 0 else np.nan
+            }))
+            .reset_index(drop=True)
+        )
 
-            usage_wide_display.index = usage_wide_display.index.astype(int)
-            usage_wide_display = usage_wide_display.reset_index().rename(columns={"game_year": "Year"})
+        present_pitches = [p for p in PITCH_ORDER if p in hist_pitch["pitch_type"].unique()]
+        all_years = sorted(hist_pitch["game_year"].unique(), reverse=True)
 
-            st.dataframe(
-                usage_wide_display,
-                use_container_width=True,
-                hide_index=True,
-            )
-            
-        # (2) Historical Stuff+
-        with col2:
-            st.subheader("Stuff+")
+        # Build rows
+        rows = []
+        for yr in all_years:
+            row_data = {"Year": int(yr)}
+            # Overall
+            ov = overall_year[overall_year["game_year"] == yr]["Overall"]
+            row_data["Overall Stuff+"] = f"{ov.values[0]:.0f}" if len(ov) > 0 and pd.notna(ov.values[0]) else ""
+            for pitch in present_pitches:
+                u = usage_wide.loc[yr, pitch] if yr in usage_wide.index and pitch in usage_wide.columns else np.nan
+                s = stuff_wide.loc[yr, pitch] if yr in stuff_wide.index and pitch in stuff_wide.columns else np.nan
+                row_data[f"{pitch} Usage"] = f"{u*100:.1f}%" if pd.notna(u) and u > 0 else ""
+                row_data[f"{pitch} Stuff+"] = f"{s:.0f}" if pd.notna(s) else ""
+            rows.append(row_data)
 
-            # overall from all pitches
-            overall_year = (
-                hist.groupby("game_year", as_index=False)
-                .apply(lambda x: pd.Series({
-                    "Overall": float(np.average(x["StuffPlus"], weights=x["Pitches"]))
-                    if x["Pitches"].sum() > 0 else np.nan
-                }))
-                .reset_index(drop=True)
-            )
+        merged_df = pd.DataFrame(rows)
 
-            # pitch-specific Stuff+ from only eligible pitches
-            s = hist_pitch[["game_year", "pitch_type", "StuffPlus"]].copy().rename(columns={"pitch_type": "Pitch"})
-            stuff_wide = s.pivot(index="game_year", columns="Pitch", values="StuffPlus")
+        # Build multi-level columns for display
+        col_order = ["Year", "Overall Stuff+"]
+        for pitch in present_pitches:
+            col_order += [f"{pitch} Usage", f"{pitch} Stuff+"]
 
-            pitch_cols = [p for p in PITCH_ORDER if p in stuff_wide.columns]
-            stuff_wide = stuff_wide.reindex(columns=pitch_cols)
-
-            out = overall_year.merge(stuff_wide, left_on="game_year", right_index=True, how="left")
-            out = out.sort_values("game_year", ascending=False)
-
-            out["game_year"] = out["game_year"].astype(int)
-            out["Overall"] = pd.to_numeric(out["Overall"], errors="coerce").round(0)
-
-            for c in pitch_cols:
-                out[c] = pd.to_numeric(out[c], errors="coerce").round(0)
-
-            out = out.rename(columns={"game_year": "Year"})
-
-            stuff_display = out.copy()
-            stuff_display["Overall"] = stuff_display["Overall"].map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
-            for c in pitch_cols:
-                stuff_display[c] = stuff_display[c].map(lambda x: f"{x:.0f}" if pd.notna(x) else "")
-
-            st.dataframe(
-                stuff_display[["Year", "Overall"] + pitch_cols],
-                use_container_width=True,
-                hide_index=True,
-            )
+        st.dataframe(
+            merged_df[col_order],
+            use_container_width=True,
+            hide_index=True,
+        )
             
         # -----------------------------
         # Historical Shape / Spin
