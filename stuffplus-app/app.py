@@ -478,9 +478,15 @@ with tab_profile:
                     hoverinfo="skip",
                 ))
 
+            # Sample up to 100 pitches per type for display (deterministic)
+            dfp_sampled = (
+                dfp.groupby("pitch_type", group_keys=False)
+                .apply(lambda x: x.sample(min(100, len(x)), random_state=42))
+            )
+
             # Draw dots on top of ellipses
             for pitch in [p for p in PITCH_ORDER if p in dfp["pitch_type"].dropna().unique()]:
-                subset = dfp[dfp["pitch_type"] == pitch].copy()
+                subset = dfp_sampled[dfp_sampled["pitch_type"] == pitch].copy()
                 color = PITCH_COLORS.get(pitch, "white")
                 fig.add_trace(go.Scatter(
                     x=subset["HB"],
