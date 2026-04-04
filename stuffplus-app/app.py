@@ -736,15 +736,13 @@ with tab_lb:
     st.subheader("Stuff+ Leaderboard")
 
     # Controls
-    page_size = st.selectbox("Rows per page", [10, 25, 30, 50, 100, 200], index=2)
-
     # -----------------------------
     # Build leaderboard from pitcher_history
     # -----------------------------
 
-    lb_controls1, lb_controls2, lb_controls3 = st.columns([1, 1, 1])
+    lb_col1, lb_col2 = st.columns([1, 1])
 
-    with lb_controls1:
+    with lb_col1:
         min_ip = st.number_input(
             "Min IP",
             min_value=0,
@@ -754,15 +752,8 @@ with tab_lb:
             help="Minimum innings pitched for the selected season"
         )
 
-    with lb_controls2:
-        min_pitch_for_pitchcol = st.number_input(
-            "Min pitches (per pitch type)",
-            min_value=1,
-            max_value=200,
-            value=10,
-            step=10,
-            help="Minimum pitches thrown for a pitch-type column to appear"
-        )
+    with lb_col2:
+        page_size = st.selectbox("Rows per page", [10, 25, 30, 50, 100, 200], index=2)
 
     # ph_year = pitcher_history filtered to selected season
     ph_year = pitcher_history[
@@ -824,10 +815,10 @@ with tab_lb:
         overall = overall.merge(ip_col, on="PlayerName", how="left")
 
     # Wide pivot for per-pitch Stuff+ columns
-    # Only show a pitch column if pitcher threw >= min_pitch_for_pitchcol
+    # Only show a pitch column if pitcher threw >= 10 pitches
     g_pitch = ph_year.copy()
     g_pitch.loc[
-        g_pitch["Pitches"] < min_pitch_for_pitchcol, "StuffPlus"
+        g_pitch["Pitches"] < 10, "StuffPlus"
     ] = np.nan
     g_pitch = g_pitch.rename(columns={"pitch_type": "Pitch"})
 
