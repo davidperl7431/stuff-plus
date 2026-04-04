@@ -16,6 +16,7 @@ DF_SCORED_YEAR_URLS = {
     2023: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2023.parquet",
     2024: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2024.parquet",
     2025: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2025.parquet",
+    2026: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2026.parquet",
 }
 
 # -----------------------------
@@ -255,6 +256,7 @@ years = (
     .unique()
     .tolist()
 )
+years = [y for y in years if y in DF_SCORED_YEAR_URLS]
 
 if len(years) == 0:
     st.info("No seasons available for this pitcher.")
@@ -274,7 +276,7 @@ if st.session_state.get("last_year") != year:
     st.session_state["last_year"] = year
 
 df_scored = load_df_scored_year(year)
-min_pitches_by_type = 25
+min_pitches_by_type = 10
 
 # -----------------------------
 # Tabs
@@ -747,7 +749,7 @@ with tab_lb:
             "Min IP",
             min_value=0,
             max_value=300,
-            value=162,
+            value=0,
             step=1,
             help="Minimum innings pitched for the selected season"
         )
@@ -785,7 +787,9 @@ with tab_lb:
 
     # Overall Stuff+ from pitcher_history (arsenal pitches only)
     # Filter to arsenal pitches using same thresholds as profile page
-    ph_arsenal = ph_year[ph_year["Pitches"] >= 100].copy()
+    # Scale arsenal threshold down early in the season when pitch counts are low
+    arsenal_min_pitches = min(100, max(10, int(ph_year["Pitches"].quantile(0.25))))
+    ph_arsenal = ph_year[ph_year["Pitches"] >= arsenal_min_pitches].copy()
 
     # Compute total pitches per pitcher (across arsenal pitches only)
     pitcher_totals = (
