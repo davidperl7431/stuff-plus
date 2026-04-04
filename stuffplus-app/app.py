@@ -912,18 +912,6 @@ with tab_lb:
         use_container_width=True,
         hide_index=True,
     )
-
-    lb_jump = st.selectbox(
-        "Jump to pitcher profile",
-        options=[None] + display_lb["PlayerName"].tolist(),
-        format_func=lambda x: "" if x is None else x,
-        index=0,
-        key="lb_jump_leaderboard",
-    )
-    if lb_jump is not None:
-        st.session_state["pitcher_name"] = lb_jump
-        st.rerun()
-
     st.divider()
 
     st.subheader("Pitch Usage")
@@ -986,23 +974,6 @@ with tab_lb:
         use_container_width=True,
         hide_index=True,
     )
-
-    usage_visible_names = (
-        usage_disp[["PlayerName", "Pitches"] + pitch_cols_u]
-        .iloc[start:end]
-        .reset_index(drop=True)["PlayerName"]
-        .tolist()
-    )
-    usage_jump = st.selectbox(
-        "Jump to pitcher profile",
-        options=[None] + usage_visible_names,
-        format_func=lambda x: "" if x is None else x,
-        index=0,
-        key="lb_jump_usage",
-    )
-    if usage_jump is not None:
-        st.session_state["pitcher_name"] = usage_jump
-        st.rerun()
 
     st.caption("Usage values are percentages within each pitcher-season.")
 
@@ -1234,19 +1205,3 @@ with tab_finder:
         use_container_width=True,
         hide_index=True,
     )
-
-    finder_jump_names = (
-        filtered["Pitcher"].dropna().unique().tolist()
-        if "Pitcher" in filtered.columns
-        else []
-    )
-    finder_jump = st.selectbox(
-        "Jump to pitcher profile",
-        options=[None] + finder_jump_names,
-        format_func=lambda x: "" if x is None else x,
-        index=0,
-        key="finder_jump",
-    )
-    if finder_jump is not None:
-        st.session_state["pitcher_name"] = finder_jump
-        st.rerun()
