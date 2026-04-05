@@ -740,25 +740,28 @@ with tab_lb:
     # Build leaderboard from pitcher_history
     # -----------------------------
 
-    lb_col1, lb_col2 = st.columns([1, 1])
-
-    with lb_col1:
-        min_ip = st.number_input(
-            "Min IP",
-            min_value=0,
-            max_value=300,
-            value=0,
-            step=1,
-            help="Minimum innings pitched for the selected season"
-        )
-
-    with lb_col2:
-        page_size = st.selectbox("Rows per page", [10, 25, 30, 50, 100, 200], index=2)
-
     # ph_year = pitcher_history filtered to selected season
     ph_year = pitcher_history[
         pitcher_history["game_year"] == year
     ].copy()
+
+    lb_col1, lb_col2 = st.columns([1, 1])
+
+    with lb_col1:
+        max_ip_this_year = pd.to_numeric(ph_year["IP"], errors="coerce").max()
+        games_per_team_est = max_ip_this_year / 9 if pd.notna(max_ip_this_year) and max_ip_this_year > 0 else 0
+        default_min_ip = max(0, round(games_per_team_est))
+        min_ip = st.number_input(
+            "Min IP",
+            min_value=0,
+            max_value=300,
+            value=default_min_ip,
+            step=1,
+            help="Minimum innings pitched for the selected season (auto-scaled to games played)"
+        )
+
+    with lb_col2:
+        page_size = st.selectbox("Rows per page", [10, 25, 30, 50, 100, 200], index=2)
 
     # --- IP filter ---
     # IP is in pitcher_history directly
@@ -968,7 +971,7 @@ with tab_lb:
 
     st.caption("Usage values are percentages within each pitcher-season.")
 
-def get_numeric_slider_bounds(series):
+def get_numeric_slider_bounds(series, col=""):
     s = pd.to_numeric(series, errors="coerce").dropna()
     if len(s) == 0:
         return None
@@ -1004,7 +1007,7 @@ def get_numeric_slider_bounds(series):
     lo = float(np.floor(smin * 10) / 10)
     hi = float(np.ceil(smax * 10) / 10)
 
-    return {
+    bounds = {
         "min": lo,
         "max": hi,
         "default": (lo, hi),
@@ -1012,6 +1015,31 @@ def get_numeric_slider_bounds(series):
         "format": fmt,
         "kind": "float",
     }
+
+    COLUMN_STEPS = {
+        "Usage %": (1.0, "%.1f"),
+        "Arm Angle": (1.0, "%.0f"),
+        "Spin": (25, None),
+        "Spin Axis": (5, None),
+        "Spin Eff.": (0.05, "%.2f"),
+        "iVB": (0.5, "%.1f"),
+        "HB": (0.5, "%.1f"),
+        "SSW": (0.1, "%.1f"),
+        "SSW_X": (0.1, "%.1f"),
+        "SSW_Z": (0.1, "%.1f"),
+    }
+
+    if col in COLUMN_STEPS:
+        step, fmt = COLUMN_STEPS[col]
+        if isinstance(step, int):
+            bounds["step"] = step
+            bounds["kind"] = "int"
+            bounds["format"] = None
+        else:
+            bounds["step"] = step
+            bounds["format"] = fmt
+
+    return bounds
 
 def is_numeric_column(series):
     return pd.api.types.is_numeric_dtype(series)
@@ -1099,7 +1127,7 @@ with tab_finder:
     for col in dynamic_cols:
         series = finder_df[col]
         if is_numeric_column(series):
-            if get_numeric_slider_bounds(series) is not None:
+            if get_numeric_slider_bounds(series, col=col) is not None:
                 numeric_cols.append(col)
         else:
             if is_reasonable_categorical(series):
@@ -1110,7 +1138,7 @@ with tab_finder:
         for i in range(0, len(numeric_cols), n_per_row):
             row_cols = st.columns(n_per_row)
             for j, col in enumerate(numeric_cols[i:i+n_per_row]):
-                bounds = get_numeric_slider_bounds(finder_df[col])
+                bounds = get_numeric_slider_bounds(finder_df[col], col=col)
                 if bounds is None:
                     continue
 
