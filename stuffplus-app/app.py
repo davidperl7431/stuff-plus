@@ -13,7 +13,6 @@ st.set_page_config(page_title="Perl Stuff+", layout="wide")
 PITCHER_HISTORY_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/pitcher_history.parquet"
 
 DF_SCORED_YEAR_URLS = {
-    2023: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2023.parquet",
     2024: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2024.parquet",
     2025: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2025.parquet",
     2026: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2026.parquet",
