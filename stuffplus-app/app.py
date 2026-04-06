@@ -1228,9 +1228,8 @@ with tab_finder:
     )
 
 with tab_methodology:
+    st.subheader("What is Stuff+?")
     st.markdown("""
-## What is Stuff+?
-
 Stuff+ is a pitch-level quality metric that measures a pitch based purely
 on its physical characteristics — velocity, movement, spin, release point,
 and other factors. **All pitches within a given season are grouped together
@@ -1243,8 +1242,6 @@ it can be used to compare across pitch types. A sweeper that grades out at
 115 is more valuable than a four-seamer at 108, and pitch types that
 systematically grade above or below 100 reflect genuine differences in how
 hard those pitch types are to hit.
-
-## How it's built
 
 For each pitch, we calculate the expected run value — the average change
 in run expectancy associated with that pitch's outcome. This gives us a
@@ -1260,10 +1257,10 @@ The raw predictions are normalized across all pitches within each season
 so that 100 always represents the league average, with a standard deviation
 of 10.
 
-## What it measures — and what it doesn't
-
 Stuff+ captures the physical quality of a pitch in isolation. It does not
 account for sequencing, command, deception, or batter matchups. As
 constructed, a pitcher with elite Stuff+ but poor command may underperform
 their score, while a crafty pitcher may outperform it.
+
+*This model was built by David Perl. For questions or feedback, please reach out on X @ds_perl.*
 """)
