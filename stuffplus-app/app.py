@@ -758,8 +758,7 @@ with tab_lb:
 
     with lb_col1:
         max_ip_this_year = pd.to_numeric(ph_year["IP"], errors="coerce").max()
-        games_per_team_est = max_ip_this_year / 9 if pd.notna(max_ip_this_year) and max_ip_this_year > 0 else 0
-        default_min_ip = max(0, round(games_per_team_est))
+        default_min_ip = max(0, round(max_ip_this_year)) if pd.notna(max_ip_this_year) and max_ip_this_year > 0 else 0
         min_ip = st.number_input(
             "Min IP",
             min_value=0,
