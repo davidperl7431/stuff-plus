@@ -262,11 +262,18 @@ if len(years) == 0:
     st.info("No seasons available for this pitcher.")
     st.stop()
 
+if st.session_state.get("last_pitcher") != pitcher_name:
+    st.session_state["season_select"] = years[0]
+    st.session_state["last_pitcher"] = pitcher_name
+
+most_recent_year = max(DF_SCORED_YEAR_URLS.keys())
+default_year_index = years.index(most_recent_year) if most_recent_year in years else 0
+
 with top2:
     year = st.selectbox(
         "Season",
         years,
-        index=0,
+        index=default_year_index,
         key="season_select",
     )
 
@@ -853,7 +860,7 @@ with tab_lb:
     lb = lb.sort_values(["Overall", "Pitches"], ascending=[False, False])
 
     # Columns to show — include IP if available
-    show_cols = ["PlayerName", "Overall", "Pitches"]
+    show_cols = ["PlayerName", "Overall"]
     if "IP" in lb.columns:
         lb["IP"] = pd.to_numeric(lb["IP"], errors="coerce").round(1)
         show_cols.append("IP")
