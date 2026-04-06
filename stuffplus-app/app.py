@@ -757,16 +757,12 @@ with tab_lb:
     lb_col1, lb_col2 = st.columns([1, 1])
 
     with lb_col1:
-        if "game_date" in ph_year.columns:
-            games_played = ph_year["game_date"].nunique()
-            default_min_ip = max(0, round(games_played))
-        elif "game_date" in pitcher_history.columns:
-            games_played = pitcher_history[
-                pitcher_history["game_year"] == year
-            ]["game_date"].nunique()
+        if "game_date" in df_scored.columns:
+            games_played = df_scored["game_date"].nunique()
             default_min_ip = max(0, round(games_played))
         else:
-            default_min_ip = 0
+            max_ip_this_year = pd.to_numeric(ph_year["IP"], errors="coerce").max()
+            default_min_ip = max(0, round(max_ip_this_year * 0.5)) if pd.notna(max_ip_this_year) and max_ip_this_year > 0 else 0
         min_ip = st.number_input(
             "Min IP",
             min_value=0,
