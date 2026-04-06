@@ -757,8 +757,11 @@ with tab_lb:
     lb_col1, lb_col2 = st.columns([1, 1])
 
     with lb_col1:
-        max_ip_this_year = pd.to_numeric(ph_year["IP"], errors="coerce").max()
-        default_min_ip = max(0, round(max_ip_this_year)) if pd.notna(max_ip_this_year) and max_ip_this_year > 0 else 0
+        if "game_date" in df_scored.columns:
+            games_played = df_scored["game_date"].nunique()
+            default_min_ip = max(0, round(games_played))
+        else:
+            default_min_ip = 0
         min_ip = st.number_input(
             "Min IP",
             min_value=0,
