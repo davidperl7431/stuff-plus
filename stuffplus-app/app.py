@@ -110,14 +110,14 @@ def build_pitch_finder_table(df, min_pitches=25):
     d["release_speed"] = pd.to_numeric(d["release_speed"], errors="coerce")
     d["release_spin_rate"] = pd.to_numeric(d["release_spin_rate"], errors="coerce")
     d["release_extension"] = pd.to_numeric(d["release_extension"], errors="coerce")
-    d["Stuff+_pt"] = pd.to_numeric(d["Stuff+_pt"], errors="coerce")
+    d["Stuff+"] = pd.to_numeric(d["Stuff+"], errors="coerce")
     d["spin_axis"] = pd.to_numeric(d.get("spin_axis"), errors="coerce")
     d["ssw_in"] = pd.to_numeric(d.get("ssw_in"), errors="coerce")
     d["spin_efficiency"] = pd.to_numeric(d.get("spin_efficiency"), errors="coerce")
 
     agg_dict = {
         "Pitches": ("pitch_type", "size"),
-        "StuffPlus": ("Stuff+_pt", "mean"),
+        "StuffPlus": ("Stuff+", "mean"),
         "Velo": ("release_speed", "mean"),
         "iVB": ("iVB", "mean"),
         "HB": ("HB", "mean"),
@@ -281,7 +281,9 @@ min_pitches_by_type = 10
 # -----------------------------
 # Tabs
 # -----------------------------
-tab_profile, tab_lb, tab_finder = st.tabs(["Pitcher Profile", "Stuff+ Leaderboard", "Pitch Finder"])
+tab_profile, tab_lb, tab_finder, tab_methodology = st.tabs([
+    "Pitcher Profile", "Stuff+ Leaderboard", "Pitch Finder", "Methodology"
+])
 
 # -----------------------------
 # Filter pitcher-season rows (used on profile + scatter)
@@ -455,7 +457,7 @@ with tab_profile:
                     line=dict(width=0.5, color="black"),
                     opacity=0.8,
                 ),
-                customdata=subset[["release_speed", "release_spin_rate", "Stuff+_pt"]].values,
+                customdata=subset[["release_speed", "release_spin_rate", "Stuff+"]].values,
                 hovertemplate=(
                     f"<b>{pitch}</b><br>"
                     "Velo: %{customdata[0]:.1f}<br>"
@@ -1224,3 +1226,44 @@ with tab_finder:
         use_container_width=True,
         hide_index=True,
     )
+
+with tab_methodology:
+    st.markdown("""
+## What is Stuff+?
+
+Stuff+ is a pitch-level quality metric that measures a pitch based purely
+on its physical characteristics — velocity, movement, spin, release point,
+and other factors. **All pitches within a given season are grouped together
+such that they have a mean of 100 and standard deviation of 10.** So a pitch
+with a Stuff+ of 110 is one standard deviation above the league average,
+and a pitch with a Stuff+ of 90 is one standard deviation below.
+
+Because Stuff+ is normalized globally rather than within each pitch type,
+it can be used to compare across pitch types. A sweeper that grades out at
+115 is more valuable than a four-seamer at 108, and pitch types that
+systematically grade above or below 100 reflect genuine differences in how
+hard those pitch types are to hit.
+
+## How it's built
+
+For each pitch, we calculate the expected run value — the average change
+in run expectancy associated with that pitch's outcome. This gives us a
+continuous, outcome-weighted measure of pitch effectiveness as the model's
+target.
+
+We then train a model to predict that run value using only the physical
+attributes of the pitch. The model is trained on prior seasons and evaluated
+out-of-sample on the current year, so it measures true predictive quality
+rather than fitting to results.
+
+The raw predictions are normalized across all pitches within each season
+so that 100 always represents the league average, with a standard deviation
+of 10.
+
+## What it measures — and what it doesn't
+
+Stuff+ captures the physical quality of a pitch in isolation. It does not
+account for sequencing, command, deception, or batter matchups. As
+constructed, a pitcher with elite Stuff+ but poor command may underperform
+their score, while a crafty pitcher may outperform it.
+""")
