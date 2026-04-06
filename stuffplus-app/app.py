@@ -217,7 +217,7 @@ pitcher_history = load_pitcher_history()
 # -----------------------------
 # Main-page Pitcher / Season selectors
 # -----------------------------
-st.title("Perl Stuff+")
+st.markdown("## Perl Stuff+")
 
 all_pitchers = (
     pitcher_history["PlayerName"]
