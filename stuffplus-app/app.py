@@ -11,6 +11,7 @@ st.set_page_config(page_title="Perl Stuff+", layout="wide")
 # Remote data URLs
 # -----------------------------
 PITCHER_HISTORY_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/pitcher_history.parquet"
+METADATA_URL = "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/metadata.json"
 
 DF_SCORED_YEAR_URLS = {
     2024: "https://huggingface.co/datasets/perld/stuff-plus-data/resolve/main/df_scored_2024.parquet",
@@ -29,6 +30,16 @@ def load_pitcher_history():
 def load_df_scored_year(year):
     url = DF_SCORED_YEAR_URLS[int(year)]
     return pd.read_parquet(url)
+
+@st.cache_data(ttl=3600)
+def load_metadata():
+    import requests
+    try:
+        r = requests.get(METADATA_URL, timeout=15)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return {}
 
 def add_arm_angle_line(fig, theta_deg, *, p_throws: str, xlim=(-25, 25), ylim=(-25, 25), origin_pad=2.0):
     
@@ -217,6 +228,12 @@ pitcher_history = load_pitcher_history()
 # Main-page Pitcher / Season selectors
 # -----------------------------
 st.markdown("## Perl Stuff+")
+
+_metadata = load_metadata()
+if _metadata.get("last_updated"):
+    _dt = pd.to_datetime(_metadata["last_updated"])
+    _date_str = f"{_dt.strftime('%B')} {_dt.day}"
+    st.caption(f"Data updated as of {_date_str}")
 
 all_pitchers = (
     pitcher_history["PlayerName"]
@@ -1271,5 +1288,5 @@ account for sequencing, command, deception, or batter matchups. As
 constructed, a pitcher with elite Stuff+ but poor command may underperform
 their score, while a crafty pitcher may outperform it.
 
-*This model was built by David Perl. For questions or feedback, please reach out on X @ds_perl.*
+*This model was built by David Perl, inspired by the original Stuff+ metric created by Eno Sarris and Max Bay. For questions or feedback, please reach out on X @ds_perl.*
 """)
